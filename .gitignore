@@ -1,0 +1,12 @@
+# other git repositories (submodules)
+# source/tgui/ # merged back into this repository
+
+# temporary files
+*.exe
+*.sdf
+*.suo
+*.lnk
+*.ilk
+*.pdb
+*.user
+*.opensdf
