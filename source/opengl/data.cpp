@@ -8,7 +8,7 @@
 #include <memory>
 #include "../thirdparty/lodepng.h"
 
-void ImageBuffer::UpdateParameters()
+void GLImageBuffer::UpdateParameters()
 {
 	glBindTexture(GL_TEXTURE_2D, textureId);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -18,7 +18,7 @@ void ImageBuffer::UpdateParameters()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageWidth, imageHeight, 0, pixelFormat, GL_UNSIGNED_BYTE, (GLvoid*)data.data());
 }
 
-void ImageBuffer::SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a)
+void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a)
 {
 	unsigned int pixelIndex = PixelArrayIndex(x, y);
 	data[pixelIndex] = r;
@@ -27,24 +27,24 @@ void ImageBuffer::SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g,
 	data[pixelIndex + 3] = a;
 }
 
-unsigned int ImageBuffer::PixelArrayIndex(unsigned int x, unsigned int y)
+unsigned int GLImageBuffer::PixelArrayIndex(unsigned int x, unsigned int y)
 {
 	return y * imageWidth * imageChannelCount + x * imageChannelCount;
 }
 
-void ImageBuffer::UseForDrawing()
+void GLImageBuffer::UseForDrawing()
 {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureId);
 }
 
-void ImageBuffer::Update()
+void GLImageBuffer::SendToGPU()
 {
 	glBindTexture(GL_TEXTURE_2D, textureId);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, imageWidth, imageHeight, pixelFormat, GL_UNSIGNED_BYTE, (GLvoid*)data.data());
 }
 
-void ImageBuffer::FillSquare(unsigned int startX, unsigned int startY, unsigned int endX, unsigned int endY,
+void GLImageBuffer::FillSquare(unsigned int startX, unsigned int startY, unsigned int endX, unsigned int endY,
 	GLubyte r, GLubyte g, GLubyte b, GLubyte a)
 {
 	for (unsigned int x = startX; x <= endX; ++x)
@@ -56,7 +56,7 @@ void ImageBuffer::FillSquare(unsigned int startX, unsigned int startY, unsigned 
 	}
 }
 
-void ImageBuffer::FillDebug()
+void GLImageBuffer::FillDebug()
 {
 	for (int x = 0; x < imageWidth; ++x)
 	{
@@ -71,7 +71,7 @@ void ImageBuffer::FillDebug()
 	}
 }
 
-void ImageBuffer::SaveAsPNG(std::string filename, bool incrementNewFile)
+void GLImageBuffer::SaveAsPNG(std::string filename, bool incrementNewFile)
 {
 	unsigned error = lodepng::encode(filename, data, (unsigned int)imageWidth, (unsigned int)imageHeight);
 	if (error)
@@ -80,7 +80,7 @@ void ImageBuffer::SaveAsPNG(std::string filename, bool incrementNewFile)
 	}
 }
 
-void ImageBuffer::LoadPNG(std::string filename)
+void GLImageBuffer::LoadPNG(std::string filename)
 {
 	unsigned sourceWidth, sourceHeight;
 
@@ -123,27 +123,27 @@ void ImageBuffer::LoadPNG(std::string filename)
 	}
 }
 
-Quad::Quad()
+GLQuad::GLQuad()
 {
 	CreateMeshBuffer();
 	CreateShaders();
 }
 
-Quad::~Quad()
+GLQuad::~GLQuad()
 {
 	glDeleteProgram(glProgram);
 	glDeleteBuffers(1, &positionBuffer);
 	glDeleteBuffers(1, &texCoordBuffer);
 }
 
-void Quad::Draw()
+void GLQuad::Draw()
 {
 	const GLuint QUAD_NUM_VERTICES = 6; // two triangles
 	glUseProgram(glProgram);
 	glDrawArrays(GL_TRIANGLES, 0, QUAD_NUM_VERTICES);
 }
 
-void Quad::CreateMeshBuffer()
+void GLQuad::CreateMeshBuffer()
 {
 	// GL coordinate system is not like most UIs where the origin is upper left corner.
 	// Y is up, X is right 
@@ -198,7 +198,7 @@ void Quad::CreateMeshBuffer()
 	BufferVector(GL_ARRAY_BUFFER, tcoords, GL_STATIC_DRAW);
 }
 
-void Quad::CreateShaders()
+void GLQuad::CreateShaders()
 {
 	std::string glsl_vertex = R"glsl(
 		#version 330

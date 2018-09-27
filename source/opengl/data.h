@@ -5,9 +5,8 @@
 #pragma once
 #include <vector>
 #include "glad/glad.h"
-#include "../arithmetic.h"
 
-class ImageBuffer
+class GLImageBuffer
 {
 protected:
 	std::vector<GLubyte> data;
@@ -20,7 +19,7 @@ protected:
 	int imageChannelCount = 0;
 
 public:
-	ImageBuffer(int width, int height, int channels, GLenum format = GL_RGBA)
+	GLImageBuffer(int width, int height, int channels, GLenum format = GL_RGBA)
 		: imageWidth{ width }, imageHeight{ height }, imageChannelCount{ channels }, pixelFormat{ format }
 	{
 		dataSize = imageWidth * imageHeight * imageChannelCount;
@@ -30,7 +29,7 @@ public:
 		UpdateParameters();
 	}
 
-	~ImageBuffer()
+	~GLImageBuffer()
 	{
 		glDeleteTextures(1, &textureId);
 	}
@@ -46,7 +45,7 @@ public:
 	void SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a);
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 	void UseForDrawing();
-	void Update();
+	void SendToGPU();
 	void FillSquare(unsigned int startX, unsigned int startY, unsigned int endX, unsigned int endY,
 		GLubyte r, GLubyte g, GLubyte b, GLubyte a);
 
@@ -55,7 +54,7 @@ public:
 	void LoadPNG(std::string filename);
 };
 
-class Quad
+class GLQuad
 {
 protected:
 	GLuint positionBuffer = 0;
@@ -64,9 +63,9 @@ protected:
 	GLuint glProgram = 0;
 
 public:
-	Quad();
+	GLQuad();
 
-	~Quad();
+	~GLQuad();
 
 	void Draw();
 
@@ -87,4 +86,24 @@ protected:
 	}
 
 	void CreateShaders();
+};
+
+class GLFullscreenImage
+{
+protected:
+	GLQuad mesh;
+
+public:
+	GLImageBuffer buffer;
+
+	GLFullscreenImage(int width, int height, int channels, GLenum format = GL_RGBA)
+		: buffer{ width, height, channels, format }
+	{}
+
+	void Draw()
+	{
+		buffer.UseForDrawing();
+		buffer.SendToGPU();
+		mesh.Draw();
+	}
 };

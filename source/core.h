@@ -8,6 +8,7 @@
 #include "opengl/data.h"
 #include "opengl/screenshot.h"
 #include "helpers/clock.h"
+#include "datatypes.h"
 
 //#define GLM_FORCE_RADIANS 1
 #include "glm/glm.hpp"

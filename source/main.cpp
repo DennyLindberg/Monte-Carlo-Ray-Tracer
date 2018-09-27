@@ -13,49 +13,75 @@
 #include <memory>
 
 #include "core.h"
+#include "imageconversion.h"
 
+static const bool SCREEN_VSYNC = false;
 static const int SCREEN_FULLSCREEN = 0;
 static const int SCREEN_WIDTH = 640;
 static const int SCREEN_HEIGHT = 480;
 
+static const float SCREEN_UPDATE_DELAY = 2.0f;
+static const bool USE_MULTITHREADING = true;
+
 int main()
 {
+	OpenGLWindow window("OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
+	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
+
+	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT, 4);
+	PixelBuffer pixels(SCREEN_WIDTH, SCREEN_HEIGHT, 4);
+
+	/*
+		Variables used for filling the screen with lines
+	*/
+	unsigned int pixelId = 0;
+	double r = 1000.0;
+	double g = 0.0;
+	double b = 0.0;
+
+	/*
+		Application loop
+	*/
 	ApplicationClock clock;
-
-	SDL_GLContext maincontext;
-	SDL_Window* window = nullptr;
-	init_main_window(window, maincontext, "OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN);
-
-	Quad fullscreenQuad;
-	ImageBuffer fullscreenImage(SCREEN_WIDTH, SCREEN_HEIGHT, 4);
-
-	// Choose one of these two
-	//fullscreenImage.FillDebug();
-	fullscreenImage.LoadPNG("example_image.png");
-	
-	// Draw a blue square on the image
-	fullscreenImage.FillSquare((unsigned int)(fullscreenImage.width()*0.2f), (unsigned int)(fullscreenImage.height()*0.2f),
-							   (unsigned int)(fullscreenImage.width()*0.4f), (unsigned int)(fullscreenImage.height()*0.8f),
-							   0, 0, 255, 255);
-
-	SDL_Event event;
+	float lastScreenUpdate = clock.Time();
 	bool quit = false;
 	while (!quit) 
 	{
 		clock.Tick();
+		window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
 		
-		std::string windowTitle = "FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time());
-		SDL_SetWindowTitle(window, windowTitle.c_str());
+		/*
+			Fill screen with diagonal lines
+		*/
+		pixelId += 3*12;
+		if ((int) pixelId >= pixels.size())
+		{
+			pixelId = 0;
 
-		// Animate background
-		float bgValue = abs(sin(clock.Time()));
-		fillWindow(bgValue, bgValue, bgValue, 1.0f);
+			// Alternate between red and green when screen has been filled
+			if (r == 1000.0) { r = 0.0; g = 1000.0; b = 0.0; }
+			else			 { r = 1000.0; g = 0.0; b = 0.0; }
+		}
+		pixels[pixelId] = r; pixels[pixelId+1] = g; pixels[pixelId+2] = b; pixels[pixelId+3] = 1000.0;
 
-		fullscreenImage.Update();
-		fullscreenImage.UseForDrawing();
-		fullscreenQuad.Draw();
+		/*
+			Update image on screen every SCREEN_UPDATE_DELAY seconds
+		*/
+		float timeSinceLastUpdate = clock.Time() - lastScreenUpdate;
+		if (timeSinceLastUpdate >= SCREEN_UPDATE_DELAY)
+		{
+			lastScreenUpdate = clock.Time();
 
-		SDL_GL_SwapWindow(window);
+			// Redraw screen with updated image
+			CopyPixelsToImage(pixels, glImage, USE_MULTITHREADING);
+			glImage.Draw();
+			window.SwapFramebuffer();
+		}
+
+		/*
+			Handle input events
+		*/
+		SDL_Event event;
 		while (SDL_PollEvent(&event)) 
 		{
 			if (event.type == SDL_QUIT) 
