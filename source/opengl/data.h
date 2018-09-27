@@ -5,6 +5,7 @@
 #pragma once
 #include <vector>
 #include "glad/glad.h"
+#include "../arithmetic.h"
 
 class ImageBuffer
 {
