@@ -8,7 +8,7 @@ struct ThreadInfo
 {
 	PixelBuffer* buffer = nullptr;
 	GLFullscreenImage* glImage = nullptr;
-	std::atomic<double>* maxValue = nullptr;
+	double* maxValue = nullptr;
 	int threadId = 0;
 	int numThreads = 0;
 };
@@ -19,7 +19,7 @@ void DetermineMaxValue_threaded(ThreadInfo info)
 	GLImageBuffer& imageBuffer = info.glImage->buffer;
 	int threadId = info.threadId;
 	int numThreads = info.numThreads;
-	std::atomic<double>& maxValue = *info.maxValue;
+	double& maxValue = *info.maxValue;
 
 	// Determine percentage of range
 	float threadBegin = (float)threadId / (float)numThreads;
@@ -45,7 +45,7 @@ void ConvertPixelBufferToGLImage_threaded(ThreadInfo info)
 	GLImageBuffer& imageBuffer = info.glImage->buffer;
 	int threadId = info.threadId;
 	int numThreads = info.numThreads;
-	std::atomic<double>& maxValue = *info.maxValue;
+	double& maxValue = *info.maxValue;
 
 	// Determine percentage of range
 	float threadBegin = (float)threadId / (float)numThreads;
@@ -110,15 +110,21 @@ void ConvertPixelBufferToGLImage(PixelBuffer& buffer, GLFullscreenImage& glImage
 void UpdateUsingThreads(PixelBuffer& buffer, GLFullscreenImage& glImage, int numThreads)
 {
 	std::vector<std::thread> t(numThreads);
-	std::atomic<double> maxValue = 0.0;
+	std::vector<double> maxValues(numThreads);
 	for (int i = 0; i < numThreads; i++)
 	{
-		ThreadInfo info = { &buffer, &glImage, &maxValue, i, numThreads };
+		ThreadInfo info = { &buffer, &glImage, &maxValues[i], i, numThreads };
 		t[i] = std::thread(DetermineMaxValue_threaded, info);
 	}
 	for (int i = 0; i < numThreads; i++)
 	{
 		t[i].join();
+	}
+
+	double maxValue = maxValues[0];
+	for (int i = 1; i < numThreads; i++)
+	{
+		if (maxValues[i] > maxValue) maxValue = maxValues[i];
 	}
 
 	for (int i = 0; i < numThreads; i++)

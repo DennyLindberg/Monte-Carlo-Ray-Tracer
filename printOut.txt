@@ -1,0 +1,369 @@
+loadedMESH: 0mTop_cTop
+Vertices
+Vertice: 0
+Position: ( 0.234105, 2.54502, 0.234105)
+Normal: ( 0, 0, 1)
+Texture Coordinates: (0, 1)
+Vertice: 1
+Position: ( -0.234105, 2.54502, 0.234105)
+Normal: ( 0, 0, 1)
+Texture Coordinates: (1, 1)
+Vertice: 2
+Position: ( -0.234105, 2.07681, 0.234105)
+Normal: ( 0, 0, 1)
+Texture Coordinates: (1, -0)
+Vertice: 3
+Position: ( 0.234105, 2.07681, 0.234105)
+Normal: ( 0, 0, 1)
+Texture Coordinates: (0, -0)
+Vertice: 4
+Position: ( -0.234105, 2.54502, 0.234105)
+Normal: ( -1, 0, 0)
+Texture Coordinates: (0, 1)
+Vertice: 5
+Position: ( -0.234105, 2.54502, -0.234105)
+Normal: ( -1, 0, 0)
+Texture Coordinates: (1, 1)
+Vertice: 6
+Position: ( -0.234105, 2.07681, -0.234105)
+Normal: ( -1, 0, 0)
+Texture Coordinates: (1, -0)
+Vertice: 7
+Position: ( -0.234105, 2.07681, 0.234105)
+Normal: ( -1, 0, 0)
+Texture Coordinates: (0, -0)
+Vertice: 8
+Position: ( -0.234105, 2.54502, -0.234105)
+Normal: ( -0, 0, -1)
+Texture Coordinates: (1, 1)
+Vertice: 9
+Position: ( 0.234105, 2.54502, -0.234105)
+Normal: ( -0, 0, -1)
+Texture Coordinates: (0, 1)
+Vertice: 10
+Position: ( 0.234105, 2.07681, -0.234105)
+Normal: ( -0, 0, -1)
+Texture Coordinates: (0, -0)
+Vertice: 11
+Position: ( -0.234105, 2.07681, -0.234105)
+Normal: ( -0, 0, -1)
+Texture Coordinates: (1, -0)
+Vertice: 12
+Position: ( 0.234105, 2.54502, -0.234105)
+Normal: ( 1, 0, -0)
+Texture Coordinates: (1, 1)
+Vertice: 13
+Position: ( 0.234105, 2.54502, 0.234105)
+Normal: ( 1, 0, -0)
+Texture Coordinates: (0, 1)
+Vertice: 14
+Position: ( 0.234105, 2.07681, 0.234105)
+Normal: ( 1, 0, -0)
+Texture Coordinates: (0, -0)
+Vertice: 15
+Position: ( 0.234105, 2.07681, -0.234105)
+Normal: ( 1, 0, -0)
+Texture Coordinates: (1, -0)
+Vertice: 16
+Position: ( 0.234105, 2.07681, 0.234105)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (0, -0)
+Vertice: 17
+Position: ( -0.234105, 2.07681, 0.234105)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (0, 1)
+Vertice: 18
+Position: ( -0.234105, 2.07681, -0.234105)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (1, 1)
+Vertice: 19
+Position: ( 0.234105, 2.07681, -0.234105)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (1, -0)
+Vertice: 20
+Position: ( 0.234105, 2.54502, -0.234105)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (1, -0)
+Vertice: 21
+Position: ( -0.234105, 2.54502, -0.234105)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (1, 1)
+Vertice: 22
+Position: ( -0.234105, 2.54502, 0.234105)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (0, 1)
+Vertice: 23
+Position: ( 0.234105, 2.54502, 0.234105)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (0, -0)
+Indices: 
+Triangle: 0
+(0, 1, 3)
+Triangle: 3
+(1, 2, 3)
+Triangle: 6
+(4, 5, 7)
+Triangle: 9
+(5, 6, 7)
+Triangle: 12
+(8, 9, 11)
+Triangle: 15
+(9, 10, 11)
+Triangle: 18
+(12, 13, 15)
+Triangle: 21
+(13, 14, 15)
+Triangle: 24
+(16, 17, 19)
+Triangle: 27
+(17, 18, 19)
+Triangle: 30
+(20, 21, 23)
+Triangle: 33
+(21, 22, 23)
+MESH: 1mMid_cMid
+Vertices
+Vertice: 0
+Position: ( 0, 2.0715, 0.754531)
+Normal: ( -0.7071, 0, 0.7071)
+Texture Coordinates: (0.003117, 1)
+Vertice: 1
+Position: ( -0.754531, 2.0715, 0)
+Normal: ( -0.7071, 0, 0.7071)
+Texture Coordinates: (1.00312, 1)
+Vertice: 2
+Position: ( -0.754531, 1.00443, 0)
+Normal: ( -0.7071, 0, 0.7071)
+Texture Coordinates: (1, 0)
+Vertice: 3
+Position: ( 0, 1.00443, 0.754531)
+Normal: ( -0.7071, 0, 0.7071)
+Texture Coordinates: (0, 0)
+Vertice: 4
+Position: ( -0.754531, 2.0715, 0)
+Normal: ( -0.7071, 0, -0.7071)
+Texture Coordinates: (0, 1)
+Vertice: 5
+Position: ( -0, 2.0715, -0.754531)
+Normal: ( -0.7071, 0, -0.7071)
+Texture Coordinates: (1, 1)
+Vertice: 6
+Position: ( -0, 1.00443, -0.754531)
+Normal: ( -0.7071, 0, -0.7071)
+Texture Coordinates: (1, 0)
+Vertice: 7
+Position: ( -0.754531, 1.00443, 0)
+Normal: ( -0.7071, 0, -0.7071)
+Texture Coordinates: (0, 0)
+Vertice: 8
+Position: ( -0, 2.0715, -0.754531)
+Normal: ( 0.7071, 0, -0.7071)
+Texture Coordinates: (1, 1)
+Vertice: 9
+Position: ( 0.754531, 2.0715, -0)
+Normal: ( 0.7071, 0, -0.7071)
+Texture Coordinates: (0, 1)
+Vertice: 10
+Position: ( 0.754531, 1.00443, -0)
+Normal: ( 0.7071, 0, -0.7071)
+Texture Coordinates: (0, 0)
+Vertice: 11
+Position: ( -0, 1.00443, -0.754531)
+Normal: ( 0.7071, 0, -0.7071)
+Texture Coordinates: (1, 0)
+Vertice: 12
+Position: ( 0.754531, 2.0715, -0)
+Normal: ( 0.7071, 0, 0.7071)
+Texture Coordinates: (1, 1)
+Vertice: 13
+Position: ( 0, 2.0715, 0.754531)
+Normal: ( 0.7071, 0, 0.7071)
+Texture Coordinates: (0, 1)
+Vertice: 14
+Position: ( 0, 1.00443, 0.754531)
+Normal: ( 0.7071, 0, 0.7071)
+Texture Coordinates: (0, 0)
+Vertice: 15
+Position: ( 0.754531, 1.00443, -0)
+Normal: ( 0.7071, 0, 0.7071)
+Texture Coordinates: (1, 0)
+Vertice: 16
+Position: ( 0, 1.00443, 0.754531)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (0, 0)
+Vertice: 17
+Position: ( -0.754531, 1.00443, 0)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (0, 1)
+Vertice: 18
+Position: ( -0, 1.00443, -0.754531)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (1, 1)
+Vertice: 19
+Position: ( 0.754531, 1.00443, -0)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (1, 0)
+Vertice: 20
+Position: ( 0.754531, 2.0715, -0)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (1, 0)
+Vertice: 21
+Position: ( -0, 2.0715, -0.754531)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (1, 1)
+Vertice: 22
+Position: ( -0.754531, 2.0715, 0)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (0, 1)
+Vertice: 23
+Position: ( 0, 2.0715, 0.754531)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (0, 0)
+Indices: 
+Triangle: 0
+(0, 1, 3)
+Triangle: 3
+(1, 2, 3)
+Triangle: 6
+(4, 5, 7)
+Triangle: 9
+(5, 6, 7)
+Triangle: 12
+(8, 9, 11)
+Triangle: 15
+(9, 10, 11)
+Triangle: 18
+(12, 13, 15)
+Triangle: 21
+(13, 14, 15)
+Triangle: 24
+(16, 17, 19)
+Triangle: 27
+(17, 18, 19)
+Triangle: 30
+(20, 21, 23)
+Triangle: 33
+(21, 22, 23)
+MESH: 2mBot_cBot
+Vertices
+Vertice: 0
+Position: ( -1, 1, 1)
+Normal: ( -1, 0, 0)
+Texture Coordinates: (0, 1)
+Vertice: 1
+Position: ( -1, 1, -1)
+Normal: ( -1, 0, 0)
+Texture Coordinates: (1, 1)
+Vertice: 2
+Position: ( -1, -1, -1)
+Normal: ( -1, 0, 0)
+Texture Coordinates: (1, 0)
+Vertice: 3
+Position: ( -1, -1, 1)
+Normal: ( -1, 0, 0)
+Texture Coordinates: (0, 0)
+Vertice: 4
+Position: ( -1, 1, -1)
+Normal: ( 0, 0, -1)
+Texture Coordinates: (0, 1)
+Vertice: 5
+Position: ( 1, 1, -1)
+Normal: ( 0, 0, -1)
+Texture Coordinates: (1, 1)
+Vertice: 6
+Position: ( 1, -1, -1)
+Normal: ( 0, 0, -1)
+Texture Coordinates: (1, 0)
+Vertice: 7
+Position: ( -1, -1, -1)
+Normal: ( 0, 0, -1)
+Texture Coordinates: (0, 0)
+Vertice: 8
+Position: ( 1, 1, -1)
+Normal: ( 1, 0, 0)
+Texture Coordinates: (1, 1)
+Vertice: 9
+Position: ( 1, 1, 1)
+Normal: ( 1, 0, 0)
+Texture Coordinates: (0, 1)
+Vertice: 10
+Position: ( 1, -1, 1)
+Normal: ( 1, 0, 0)
+Texture Coordinates: (0, 0)
+Vertice: 11
+Position: ( 1, -1, -1)
+Normal: ( 1, 0, 0)
+Texture Coordinates: (1, 0)
+Vertice: 12
+Position: ( 1, 1, 1)
+Normal: ( 0, 0, 1)
+Texture Coordinates: (1, 1)
+Vertice: 13
+Position: ( -1, 1, 1)
+Normal: ( 0, 0, 1)
+Texture Coordinates: (0, 1)
+Vertice: 14
+Position: ( -1, -1, 1)
+Normal: ( 0, 0, 1)
+Texture Coordinates: (0, 0)
+Vertice: 15
+Position: ( 1, -1, 1)
+Normal: ( 0, 0, 1)
+Texture Coordinates: (1, 0)
+Vertice: 16
+Position: ( -1, -1, 1)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (0, 0)
+Vertice: 17
+Position: ( -1, -1, -1)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (0, 1)
+Vertice: 18
+Position: ( 1, -1, -1)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (1, 1)
+Vertice: 19
+Position: ( 1, -1, 1)
+Normal: ( 0, -1, 0)
+Texture Coordinates: (1, 0)
+Vertice: 20
+Position: ( 1, 1, 1)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (1, 0)
+Vertice: 21
+Position: ( 1, 1, -1)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (1, 1)
+Vertice: 22
+Position: ( -1, 1, -1)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (0, 1)
+Vertice: 23
+Position: ( -1, 1, 1)
+Normal: ( 0, 1, 0)
+Texture Coordinates: (0, 0)
+Indices: 
+Triangle: 0
+(0, 1, 3)
+Triangle: 3
+(1, 2, 3)
+Triangle: 6
+(4, 5, 7)
+Triangle: 9
+(5, 6, 7)
+Triangle: 12
+(8, 9, 11)
+Triangle: 15
+(9, 10, 11)
+Triangle: 18
+(12, 13, 15)
+Triangle: 21
+(13, 14, 15)
+Triangle: 24
+(16, 17, 19)
+Triangle: 27
+(17, 18, 19)
+Triangle: 30
+(20, 21, 23)
+Triangle: 33
+(21, 22, 23)

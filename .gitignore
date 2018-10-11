@@ -1,7 +1,7 @@
 # other git repositories (submodules)
 # source/tgui/ # merged back into this repository
 
-# temporary files
+#temporary files
 *.exe
 *.sdf
 *.suo
@@ -10,3 +10,7 @@
 *.pdb
 *.user
 *.opensdf
+*.DS_Store
+
+binaries/*
+!binaries/*.obj
