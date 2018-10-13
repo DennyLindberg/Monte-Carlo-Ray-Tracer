@@ -19,6 +19,7 @@ static const bool SCREEN_VSYNC = false;
 static const int SCREEN_FULLSCREEN = 0;
 static const int SCREEN_WIDTH = 640;
 static const int SCREEN_HEIGHT = 480;
+static const int CHANNELS_PER_PIXEL = 4; // RGBA
 
 static const float SCREEN_UPDATE_DELAY = 2.0f;
 static const bool USE_MULTITHREADING = true;
@@ -28,16 +29,18 @@ int main()
 	OpenGLWindow window("OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
 
-	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT, 4);
-	PixelBuffer pixels(SCREEN_WIDTH, SCREEN_HEIGHT, 4);
+	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
+	PixelBuffer pixels(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
 
 	/*
-		Variables used for filling the screen with lines
+		Initialize scene
 	*/
-	unsigned int pixelId = 0;
-	double r = 1000.0;
-	double g = 0.0;
-	double b = 0.0;
+	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL};
+	camera.SetLookAt(vec4(0.0f, 0.0f, 10.0f, 1.0f), vec4(0.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f, 1.0f, 0.0f, 1.0f));
+
+	Scene scene;
+	SphereObject* sphere = scene.CreateObject<SphereObject>();
+	sphere->radius = 0.5f;
 
 	/*
 		Application loop
@@ -51,32 +54,33 @@ int main()
 		window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
 
 		/*
-			Fill screen with diagonal lines
-		*/
-		pixelId += 3 * 12;
-		if ((int)pixelId >= pixels.size())
-		{
-			pixelId = 0;
+			Ray tracing loop
 
-			// Alternate between red and green when screen has been filled
-			if (r == 1000.0) { r = 0.0; g = 1000.0; b = 0.0; }
-			else { r = 1000.0; g = 0.0; b = 0.0; }
-		}
-		pixels[pixelId] = r; pixels[pixelId + 1] = g; pixels[pixelId + 2] = b; pixels[pixelId + 3] = 1000.0;
+			Exit loop once we have reached SCREEN_UPDATE_DELAY.
+		*/
+		//while ((clock.Time() - lastScreenUpdate) >= SCREEN_UPDATE_DELAY) 
+		//{}
 
 		/*
-			Update image on screen every SCREEN_UPDATE_DELAY seconds
+			Let's run path tracing once per pixel as a test
 		*/
-		float timeSinceLastUpdate = clock.Time() - lastScreenUpdate;
-		if (timeSinceLastUpdate >= SCREEN_UPDATE_DELAY)
+		Ray initialRay;
+		for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
 		{
-			lastScreenUpdate = clock.Time();
+			for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
+			{
+				initialRay = camera.EmitRayThroughPixelCenter(x, y);
 
-			// Redraw screen with updated image
-			CopyPixelsToImage(pixels, glImage, USE_MULTITHREADING);
-			glImage.Draw();
-			window.SwapFramebuffer();
+			}
 		}
+
+		/*
+			Redraw screen with current ray tracing result
+		*/
+		lastScreenUpdate = clock.Time();
+		CopyPixelsToImage(pixels, glImage, USE_MULTITHREADING);
+		glImage.Draw();
+		window.SwapFramebuffer();
 
 		/*
 			Handle input events
