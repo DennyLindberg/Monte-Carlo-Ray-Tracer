@@ -83,6 +83,8 @@ struct Ray
 	Ray(vec4 p1, vec4 p2, Triangle* surface = nullptr)
 		: start{p1}, end{p2}, triangle{surface}
 	{}
+
+	vec4 Direction() const { return vec4(glm::normalize(vec3(end - start)), 1.0f); }
 };
 
 class Transform
@@ -110,7 +112,7 @@ public:
 	SceneObject() = default;
 	~SceneObject() = default;
 
-	virtual bool Intersects(const Ray& ray, float& t) {}
+	virtual bool Intersects(const Ray& ray, float& t) { return false; }
 	virtual BBOX BoundingBox() { return BBOX(); }
 
 	glm::mat4 ModelTransform()
@@ -145,9 +147,9 @@ protected:
 	float pixelWidth;
 	float pixelHeight;
 
+public:
 	PixelBuffer pixels;
 
-public:
 	Camera(unsigned int width, unsigned int height, unsigned int channelsPerPixel, float focalLength = 1.0f, float fov = 90.0f, float nearPlane = 0.01f, float farPlane = 1000.0f)
 		: pixels{width, height, channelsPerPixel}, 
 		  focalOffset{focalLength}, fovY{fov}, 
@@ -162,9 +164,7 @@ public:
 	void SetLookAt(vec4 cameraPosition, vec4 targetPosition, vec4 cameraUp)
 	{
 		transform.position = cameraPosition;
-		vec3 position = glm::vec3(cameraPosition);
-		vec3 lookDirection = glm::vec3(targetPosition - cameraPosition);
-		viewMatrix = glm::lookAt(position, lookDirection, glm::vec3(cameraUp));
+		viewMatrix = glm::lookAt(glm::vec3(cameraPosition), vec3(targetPosition), glm::vec3(cameraUp));
 
 		UpdateMatrices();
 	}
@@ -173,17 +173,19 @@ public:
 	{
 		const float originX  = -1.0f;
 		const float originY  = 1.0f;
-		const float forwardZ = -1.0f;
+		const float forwardZ = 1.0f;
 
 		float centerX = originX + x * pixelWidth + pixelWidth / 2.0f;
 		float centerY = originY - y * pixelHeight - pixelHeight / 2.0f;
 
-		// TODO: Involve projection (replace glm::inverse(viewMatrix) with inverseViewProjectionMatrix)
 		/*
-			Note that we use glm::inverse because we are not transforming the world to the camera,
-			we are transforming the ray into the world.
+			Note that we use the inverse matrix because we are NOT transforming the world to the camera,
+			we are transforming the ray the other way around.
+
+			TODO: Something is wrong here, because the camera is unreliable and the perspective messes up
+				  when rotating the view.
 		*/
-		glm::vec4 endPoint = glm::inverse(viewMatrix) * glm::vec4(centerX, centerY, forwardZ, 1.0f);
+		glm::vec4 endPoint = inverseViewProjectionMatrix * glm::vec4(centerX, centerY, forwardZ, 1.0f);
 		return Ray(transform.position, endPoint);
 	}
 
@@ -237,7 +239,38 @@ public:
 
 	virtual bool Intersects(const Ray& ray, float& t)
 	{
-		// TODO
+		vec3 orig = vec3(ray.start);
+		vec3 dir = vec3(ray.Direction());
+		float radiusSq = radius * radius;
+
+		/*
+			Code based on ScratchAPixel guide
+		*/
+		float t0, t1;
+
+		vec3 L = vec3(transform.position) - orig;
+
+		float tca = glm::dot(L, dir);
+		if (tca < 0) return false;
+
+		float distanceSq = glm::dot(L, L) - tca * tca;
+		if (distanceSq > radiusSq) return false;
+
+		float thc = sqrt(radiusSq - distanceSq);
+		t0 = tca - thc;
+		t1 = tca + thc;
+
+		if (t0 > t1) std::swap(t0, t1);
+
+		if (t0 < 0) 
+		{
+			t0 = t1; // if t0 is negative, let's use t1 instead 
+			if (t0 < 0) return false; // both t0 and t1 are negative 
+		}
+
+		t = t0;
+
+		return true;
 	}
 
 	virtual BBOX BoundingBox() { return BBOX(); }	// TODO: Molly
@@ -275,9 +308,9 @@ public:
 	template<class T>
 	T* CreateObject()					// TODO: Return non-owning pointer
 	{
-		T* newObject = T();
-		objects.push_back(T);
-		return T;
+		T* newObject = new T();
+		objects.push_back(newObject);
+		return newObject;
 	}
 
 	bool IntersectRay(const Ray& ray, SceneObject*& hitResult, float& hitDistance) const
@@ -285,10 +318,12 @@ public:
 		hitResult = nullptr;
 		hitDistance = std::numeric_limits<float>::max();
 
+		float t = 0.0f;
 		for (SceneObject* object : objects)
 		{
-			if (object->Intersects(ray, hitDistance))
+			if (object->Intersects(ray, t) && t < hitDistance)
 			{
+				hitDistance = t;
 				hitResult = object;
 			}
 		}

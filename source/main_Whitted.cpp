@@ -16,10 +16,10 @@
 #include "imageconversion.h"
 
 static const bool SCREEN_VSYNC = false;
-static const int SCREEN_FULLSCREEN = 0;
-static const int SCREEN_WIDTH = 640;
-static const int SCREEN_HEIGHT = 480;
-static const int CHANNELS_PER_PIXEL = 4; // RGBA
+static const unsigned int SCREEN_FULLSCREEN = 0;
+static const unsigned int SCREEN_WIDTH = 640;
+static const unsigned int SCREEN_HEIGHT = 480;
+static const unsigned int CHANNELS_PER_PIXEL = 4; // RGBA
 
 static const float SCREEN_UPDATE_DELAY = 2.0f;
 static const bool USE_MULTITHREADING = true;
@@ -28,6 +28,7 @@ int main()
 {
 	OpenGLWindow window("OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
+	window.Clear();
 
 	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
 	PixelBuffer pixels(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
@@ -36,11 +37,22 @@ int main()
 		Initialize scene
 	*/
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL};
-	camera.SetLookAt(vec4(0.0f, 0.0f, 10.0f, 1.0f), vec4(0.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f, 1.0f, 0.0f, 1.0f));
+	camera.SetLookAt(vec4(0.0f, 0.0f, 20.0f, 1.0f), vec4(0.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f, 1.0f, 0.0f, 1.0f));
 
 	Scene scene;
 	SphereObject* sphere = scene.CreateObject<SphereObject>();
 	sphere->radius = 0.5f;
+	sphere->color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+
+	SphereObject* sphere2 = scene.CreateObject<SphereObject>();
+	sphere2->transform.position = vec4(-2.0, 0.0, -10.0, 1.0);
+	sphere2->radius = 0.5f;
+	sphere2->color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+
+	SphereObject* sphere3 = scene.CreateObject<SphereObject>();
+	sphere3->transform.position = vec4(2.0, 0.0, -10.0, 1.0);
+	sphere3->radius = 0.5f;
+	sphere3->color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
 
 	/*
 		Application loop
@@ -65,12 +77,26 @@ int main()
 			Let's run path tracing once per pixel as a test
 		*/
 		Ray initialRay;
+		SceneObject* hitResult;
+		float hitDistance;
 		for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
 		{
 			for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
 			{
 				initialRay = camera.EmitRayThroughPixelCenter(x, y);
 
+				if (scene.IntersectRay(initialRay, hitResult, hitDistance))
+				{
+					float fakeDepth = (11.0f - hitDistance) / 1.0f;
+					camera.pixels.SetPixel(x, y, hitResult->color.r*fakeDepth, 
+												 hitResult->color.g*fakeDepth, 
+												 hitResult->color.b*fakeDepth, 
+												 1.0);
+				}
+				else
+				{
+					camera.pixels.SetPixel(x, y, 0.0, 0.0, 0.0, 1.0);
+				}
 			}
 		}
 
@@ -78,7 +104,9 @@ int main()
 			Redraw screen with current ray tracing result
 		*/
 		lastScreenUpdate = clock.Time();
-		CopyPixelsToImage(pixels, glImage, USE_MULTITHREADING);
+
+		window.Clear();
+		CopyPixelsToImage(camera.pixels, glImage, USE_MULTITHREADING);
 		glImage.Draw();
 		window.SwapFramebuffer();
 
