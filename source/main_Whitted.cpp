@@ -97,7 +97,7 @@ int main()
 			{
 				for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
 				{
-					initialRay = camera.EmitRayThroughPixelCenter(x, y);
+					initialRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
 
 					if (scene.IntersectRay(initialRay, hitResult, hitDistance))
 					{

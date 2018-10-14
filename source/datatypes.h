@@ -167,13 +167,6 @@ public:
 		viewMatrix = glm::lookAt(glm::vec3(transform.position), vec3(targetPosition), glm::vec3(cameraUp));
 	}
 
-	Ray EmitRayThroughPixelCenter(unsigned int x, unsigned int y) const
-	{
-		return GetPixelRay(x + 0.5f, y + 0.5f);
-	}
-
-
-protected:
 	inline Ray GetPixelRay(float x, float y) const
 	{
 		/*
