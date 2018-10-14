@@ -50,23 +50,6 @@ public:
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 };
 
-struct Triangle
-{
-	vec4 vertex1;
-	vec4 vertex2;
-	vec4 vertex3;
-
-	vec4 normal;
-
-	Triangle(vec3& v1, vec3& v2, vec3& v3)
-		: vertex1{ v1, 1.0f }, vertex2{ v2, 1.0f }, vertex3{ v3, 1.0f }
-	{
-		vec3 u = v2 - v1;
-		vec3 v = v3 - v1;
-		normal = vec4(glm::cross(u, v), 0.0f);
-	}
-};
-
 struct Pixel
 {
 	ColorDbl color;
@@ -80,6 +63,7 @@ struct Pixel
 	}
 };
 
+struct Triangle; // forward declaration
 struct Ray
 {
 	ColorDbl color;
@@ -91,10 +75,72 @@ struct Ray
 	Ray() = default;
 
 	Ray(vec4 p1, vec4 p2, Triangle* surface = nullptr)
-		: start{p1}, end{p2}, triangle{surface}
+		: start{ p1 }, end{ p2 }, triangle{ surface }
 	{}
 
 	vec4 Direction() const { return vec4(glm::normalize(vec3(end - start)), 1.0f); }
+};
+
+struct Triangle
+{
+	vec4 vertex0;
+	vec4 vertex1;
+	vec4 vertex2;
+
+	vec4 normal;
+
+	// The points must be defined in clockwise order in respect to their normal
+	Triangle(vec3& v0, vec3& v1, vec3& v2)
+		: vertex0{ v0, 1.0f }, vertex1{ v1, 1.0f }, vertex2{ v2, 1.0f }
+	{
+		vec3 u = v1 - v0;
+		vec3 v = v2 - v0;
+		normal = glm::normalize(vec4(glm::cross(u, v), 0.0f));
+	}
+
+	bool Intersects(const Ray& ray, float& t)
+	{
+		// Code referenced from https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+
+		const float EPSILON = 0.0000001f;
+		vec3 rayOrigin = ray.start;
+		vec3 rayDirection = ray.Direction();
+
+		/*
+			Detect if ray is parallel to the triangle
+		*/
+		vec3 edge1 = vertex1 - vertex0;
+		vec3 edge2 = vertex2 - vertex0;
+		vec3 h = glm::cross(rayDirection, edge2);
+		float a = glm::dot(edge1, h);
+
+		if (abs(a) < EPSILON) // approximately zero
+		{
+			return false;
+		}
+
+		/*
+			Detect if ray is inside the triangle
+		*/
+		float f = 1.0f / a;
+		vec3 s = rayOrigin - vec3(vertex0);
+		float u = f * (glm::dot(s, h));
+		if (u < 0.0f || u > 1.0f)
+		{
+			return false;
+		}
+
+		vec3 q = glm::cross(s, edge1);
+		float v = f * glm::dot(rayDirection, q);
+		if (v < 0.0f || u + v > 1.0f)
+		{
+			return false;
+		}
+
+		// Determine where and if we intersected
+		t = f * glm::dot(edge2, q);
+		return (t > EPSILON);
+	}
 };
 
 class Transform
@@ -122,13 +168,8 @@ public:
 	SceneObject() = default;
 	~SceneObject() = default;
 
-	virtual bool Intersects(const Ray& ray, float& t) { return false; }
-	virtual BBOX BoundingBox() { return BBOX(); }
-
-	glm::mat4 ModelTransform()
-	{
-		// do stuff
-	}
+	virtual bool Intersects(Ray& ray, float& t) = 0;
+	virtual BBOX BoundingBox() = 0;
 };
 
 class LightObject : public SceneObject
@@ -142,11 +183,12 @@ public:
 	~LightObject() = default;
 };
 
-class Camera : public SceneObject
+class Camera
 {
 protected:
 	glm::mat4 viewMatrix;
 	float fovPixelScale = 1.0f;
+	vec3 position;
 
 public:
 	PixelBuffer pixels;
@@ -162,9 +204,10 @@ public:
 
 	~Camera() = default;
 
-	void LookAt(vec4 targetPosition, vec4 cameraUp)
+	void SetView(vec3 position, vec3 lookAtPosition, vec3 cameraUp)
 	{
-		viewMatrix = glm::lookAt(glm::vec3(transform.position), vec3(targetPosition), glm::vec3(cameraUp));
+		this->position = position;
+		viewMatrix = glm::lookAt(position, lookAtPosition, cameraUp);
 	}
 
 	inline Ray GetPixelRay(float x, float y) const
@@ -190,7 +233,7 @@ public:
 		// Rotate ray to face camera direction
 		direction = glm::normalize(viewMatrix * direction);
 
-		return Ray(transform.position, transform.position + direction);
+		return Ray(vec4(position, 1.0f), vec4(position, 1.0f) + direction);
 	}
 };
 
@@ -202,12 +245,32 @@ public:
 	PolygonObject() = default;
 	~PolygonObject() = default;
 
-	virtual bool Intersects(const Ray& ray, float& t)
+	virtual bool Intersects(Ray& ray, float& t)
 	{
-		// TODO
+		ray.triangle = nullptr;
+
+		t = std::numeric_limits<float>::max();
+		float hitDistance = 0.0f;
+		for (Triangle& triangle : triangles)
+		{
+			if (triangle.Intersects(ray, hitDistance) && hitDistance < t)
+			{
+				t = hitDistance;
+				ray.triangle = &triangle;
+			}
+		}
+
+		return (ray.triangle != nullptr);
 	}
 
 	virtual BBOX BoundingBox() { return BBOX(); }	// TODO: Molly
+
+	// The points must be defined in clockwise order in respect to their normal
+	void AddQuad(vec3 p1, vec3 p2, vec3 p3, vec3 p4)
+	{
+		triangles.push_back(Triangle{ p1, p2, p3 });
+		triangles.push_back(Triangle{ p3, p4, p1 });
+	}
 };
 
 class ImplicitObject : public SceneObject
@@ -216,7 +279,7 @@ public:
 	ImplicitObject() = default;
 	~ImplicitObject() = default;
 
-	virtual bool Intersects(const Ray& ray, float& t) = 0;
+	virtual bool Intersects(Ray& ray, float& t) = 0;
 	virtual BBOX BoundingBox() = 0;
 };
 
@@ -228,7 +291,7 @@ public:
 	SphereObject() = default;
 	~SphereObject() = default;
 
-	virtual bool Intersects(const Ray& ray, float& t)
+	virtual bool Intersects(Ray& ray, float& t)
 	{
 		vec3 orig = vec3(ray.start);
 		vec3 dir = vec3(ray.Direction());
@@ -273,7 +336,7 @@ public:
 	PlaneObject() = default;
 	~PlaneObject() = default;
 
-	virtual bool Intersects(const Ray& ray, float& t)
+	virtual bool Intersects(Ray& ray, float& t)
 	{
 		// TODO
 	}
@@ -304,21 +367,26 @@ public:
 		return newObject;
 	}
 
-	bool IntersectRay(const Ray& ray, SceneObject*& hitResult, float& hitDistance) const
+	bool IntersectRay(Ray& ray, SceneObject*& hitResult, float& t) const
 	{
 		hitResult = nullptr;
-		hitDistance = std::numeric_limits<float>::max();
+		t = std::numeric_limits<float>::max();
 
-		float t = 0.0f;
+		float hitDistance = 0.0f;
 		for (SceneObject* object : objects)
 		{
-			if (object->Intersects(ray, t) && t < hitDistance)
+			if (object->Intersects(ray, hitDistance) && hitDistance < t)
 			{
-				hitDistance = t;
+				t = hitDistance;
 				hitResult = object;
 			}
 		}
 
 		return (hitResult != nullptr);
+	}
+
+	virtual void MoveCameraToRecommendedPosition(Camera& camera)
+	{
+		camera.SetView(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 1.0f, 0.0f));
 	}
 };
