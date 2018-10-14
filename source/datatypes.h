@@ -63,22 +63,35 @@ struct Pixel
 	}
 };
 
-struct Triangle; // forward declaration
 struct Ray
 {
 	ColorDbl color;
-
 	vec4 start;
 	vec4 end;
-	Triangle* triangle;
 
 	Ray() = default;
 
-	Ray(vec4 p1, vec4 p2, Triangle* surface = nullptr)
-		: start{ p1 }, end{ p2 }, triangle{ surface }
+	Ray(vec4 p1, vec4 p2) : start{ p1 }, end{ p2 }
+	{}
+
+	Ray(vec3 p1, vec3 p2) : start{ vec4{p1,1.0f} }, end{ vec4{p2,1.0f} }
 	{}
 
 	vec4 Direction() const { return vec4(glm::normalize(vec3(end - start)), 1.0f); }
+};
+
+struct RayIntersectionInfo
+{
+	class SceneObject* object = nullptr;
+	unsigned int elementIndex = 0;
+	float hitDistance = 0.0f;
+
+	void Reset()
+	{
+		object = nullptr;
+		elementIndex = 0;
+		hitDistance = 0.0f;
+	}
 };
 
 struct Triangle
@@ -98,13 +111,10 @@ struct Triangle
 		normal = glm::normalize(vec4(glm::cross(u, v), 0.0f));
 	}
 
-	bool Intersects(const Ray& ray, float& t)
+	bool Intersects(vec3 rayOrigin, vec3 rayDirection, float& t)
 	{
 		// Code referenced from https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-
 		const float EPSILON = 0.0000001f;
-		vec3 rayOrigin = ray.start;
-		vec3 rayDirection = ray.Direction();
 
 		/*
 			Detect if ray is parallel to the triangle
@@ -168,8 +178,9 @@ public:
 	SceneObject() = default;
 	~SceneObject() = default;
 
-	virtual bool Intersects(Ray& ray, float& t) = 0;
+	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo) = 0;
 	virtual BBOX BoundingBox() = 0;
+	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index) = 0;
 };
 
 class LightObject : public SceneObject
@@ -245,25 +256,40 @@ public:
 	PolygonObject() = default;
 	~PolygonObject() = default;
 
-	virtual bool Intersects(Ray& ray, float& t)
+	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo)
 	{
-		ray.triangle = nullptr;
-
-		t = std::numeric_limits<float>::max();
+		int elementIndex = 0;
 		float hitDistance = 0.0f;
-		for (Triangle& triangle : triangles)
+		float nearestDistance = FLOAT_INFINITY;
+		for (unsigned int index=0; index<triangles.size(); ++index)
 		{
-			if (triangle.Intersects(ray, hitDistance) && hitDistance < t)
+			if (triangles[index].Intersects(rayOrigin, rayDirection, hitDistance) && hitDistance < nearestDistance)
 			{
-				t = hitDistance;
-				ray.triangle = &triangle;
+				nearestDistance = hitDistance;
+				elementIndex = index;
 			}
 		}
 
-		return (ray.triangle != nullptr);
+		if (nearestDistance < FLOAT_INFINITY)
+		{
+			hitInfo.object = this;
+			hitInfo.elementIndex = elementIndex;
+			hitInfo.hitDistance = nearestDistance;
+		}
+		else
+		{
+			hitInfo.Reset();
+		}
+
+		return (hitInfo.object != nullptr);
 	}
 
 	virtual BBOX BoundingBox() { return BBOX(); }	// TODO: Molly
+
+	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index)
+	{
+		return triangles[index].normal;
+	}
 
 	// The points must be defined in clockwise order in respect to their normal
 	void AddQuad(vec3 p1, vec3 p2, vec3 p3, vec3 p4)
@@ -279,8 +305,9 @@ public:
 	ImplicitObject() = default;
 	~ImplicitObject() = default;
 
-	virtual bool Intersects(Ray& ray, float& t) = 0;
+	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo) = 0;
 	virtual BBOX BoundingBox() = 0;
+	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index) = 0;
 };
 
 class SphereObject : public ImplicitObject
@@ -291,10 +318,8 @@ public:
 	SphereObject() = default;
 	~SphereObject() = default;
 
-	virtual bool Intersects(Ray& ray, float& t)
+	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo)
 	{
-		vec3 orig = vec3(ray.start);
-		vec3 dir = vec3(ray.Direction());
 		float radiusSq = radius * radius;
 
 		/*
@@ -302,9 +327,9 @@ public:
 		*/
 		float t0, t1;
 
-		vec3 L = vec3(transform.position) - orig;
+		vec3 L = vec3(transform.position) - rayOrigin;
 
-		float tca = glm::dot(L, dir);
+		float tca = glm::dot(L, rayDirection);
 		if (tca < 0) return false;
 
 		float distanceSq = glm::dot(L, L) - tca * tca;
@@ -322,12 +347,19 @@ public:
 			if (t0 < 0) return false; // both t0 and t1 are negative 
 		}
 
-		t = t0;
+		hitInfo.object = this;
+		hitInfo.elementIndex = 0;
+		hitInfo.hitDistance = t0;
 
 		return true;
 	}
 
 	virtual BBOX BoundingBox() { return BBOX(); }	// TODO: Molly
+
+	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index)
+	{
+		return glm::normalize(location - vec3(transform.position));
+	}
 };
 
 class PlaneObject : public ImplicitObject
@@ -336,12 +368,17 @@ public:
 	PlaneObject() = default;
 	~PlaneObject() = default;
 
-	virtual bool Intersects(Ray& ray, float& t)
+	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo)
 	{
 		// TODO
 	}
 
 	virtual BBOX BoundingBox() { return BBOX(); }	// TODO: Molly
+
+	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index)
+	{
+		return vec3{0.0f, 1.0f, 0.0f};
+	}
 };
 
 class Scene
@@ -367,22 +404,56 @@ public:
 		return newObject;
 	}
 
-	bool IntersectRay(Ray& ray, SceneObject*& hitResult, float& t) const
+	bool IntersectRay(Ray& ray, RayIntersectionInfo& hitInfo) const
 	{
-		hitResult = nullptr;
-		t = std::numeric_limits<float>::max();
+		hitInfo.object = nullptr;
+		hitInfo.elementIndex = 0;
+		hitInfo.hitDistance = FLOAT_INFINITY;
 
-		float hitDistance = 0.0f;
+		vec3 rayOrigin = vec3(ray.start);
+		vec3 rayDirection = vec3(ray.Direction());
+
+		RayIntersectionInfo hitTest;
 		for (SceneObject* object : objects)
 		{
-			if (object->Intersects(ray, hitDistance) && hitDistance < t)
+			if (object->Intersects(rayOrigin, rayDirection, hitTest) && hitTest.hitDistance < hitInfo.hitDistance)
 			{
-				t = hitDistance;
-				hitResult = object;
+				hitInfo = hitTest;
 			}
 		}
 
-		return (hitResult != nullptr);
+		return (hitInfo.object != nullptr);
+	}
+
+	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5) const
+	{
+		float lightIntensity = 0.0f;
+		ColorDbl accumulatedColor{ 0.0f };
+
+		RayIntersectionInfo hitInfo;
+		if (IntersectRay(ray, hitInfo))
+		{
+			// Get lights
+			// TODO: Shadow rays
+			float lightIntensity = 0.5f;
+
+			// Add to color
+			ColorDbl visibleColor = hitInfo.object->color;
+			visibleColor *= lightIntensity;
+			accumulatedColor += visibleColor;
+
+			if (traceDepth > 0)
+			{
+				vec3 rayDirection = ray.Direction();
+				vec3 hitLocation = vec3(ray.start) + rayDirection * hitInfo.hitDistance;
+				vec3 normal = hitInfo.object->GetSurfaceNormal(ray.end, hitInfo.elementIndex);
+				vec3 newDirection = glm::reflect(rayDirection, normal);
+
+				accumulatedColor += TraceRay(Ray{hitLocation, hitLocation + newDirection}, --traceDepth);
+			}
+		}
+		
+		return accumulatedColor;
 	}
 
 	virtual void MoveCameraToRecommendedPosition(Camera& camera)

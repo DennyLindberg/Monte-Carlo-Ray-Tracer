@@ -8,6 +8,8 @@
 #define M_PI    3.14159265358979323846264338327950288
 #endif
 
+#define FLOAT_INFINITY std::numeric_limits<float>::max()
+
 /*
 	Basic types
 */

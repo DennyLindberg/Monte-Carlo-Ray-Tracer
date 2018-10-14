@@ -21,6 +21,8 @@ static const unsigned int SCREEN_WIDTH = 640;
 static const unsigned int SCREEN_HEIGHT = 480;
 static const unsigned int CHANNELS_PER_PIXEL = 4; // RGBA
 
+static const unsigned int RAY_TRACE_DEPTH = 1;
+
 static const float CAMERA_FOV = 90.0f;
 
 static const float SCREEN_UPDATE_DELAY = 2.0f;
@@ -74,18 +76,19 @@ int main()
 			/*
 				Let's run path tracing once per pixel as a test
 			*/
-			Ray initialRay;
-			SceneObject* hitResult;
-			float hitDistance;
+			Ray cameraRay;
+			ColorDbl rayColor;
 			for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
 			{
 				for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
 				{
-					initialRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
+					cameraRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
+					rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
 
-					if (scene.IntersectRay(initialRay, hitResult, hitDistance))
+					if (rayColor.a != 0.0f)
 					{
-						camera.pixels.SetPixel(x, y, hitResult->color);
+						rayColor.a = 1.0f;
+						camera.pixels.SetPixel(x, y, rayColor);
 					}
 					else
 					{
