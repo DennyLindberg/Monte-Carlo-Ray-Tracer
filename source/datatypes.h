@@ -16,27 +16,37 @@ protected:
 	int imageHeight = 0;
 	int imageChannelCount = 0;
 
+	double dx = 0.0;
+	double dy = 0.0;
+	double aspect = 1.0;
+
 public:
 	PixelBuffer(int width, int height, int channels)
 		: imageWidth{ width }, imageHeight{ height }, imageChannelCount{ channels }
 	{
 		dataSize = imageWidth * imageHeight * imageChannelCount;
 		data.resize(dataSize);
+
+		dx = 2.0 / (double)imageWidth;
+		dy = 2.0 / (double)imageHeight;
+		aspect = imageWidth / (double)imageHeight;
 	}
 
 	~PixelBuffer() = default;
 
-	int size() { return dataSize; }
-	int numPixels() { return imageWidth * imageHeight; }
-	int width() { return imageWidth; }
-	int height() { return imageHeight; }
+	int size()		const { return dataSize; }
+	int numPixels() const { return imageWidth * imageHeight; }
+	int width()		const { return imageWidth; }
+	int height()	const { return imageHeight; }
 
 	// Returns the dimensions of each pixel in screen space coordinates
-	double deltaX() { return 2.0f / (double)imageWidth; }
-	double deltaY() { return 2.0f / (double)imageHeight; }
+	double deltaX() const { return dx; }
+	double deltaY() const { return dy; }
+	double aspectRatio() const { return aspect; }
 
 	inline double& operator[] (unsigned int i) { return data[i]; }
 	void SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a);
+	void SetPixel(unsigned int x, unsigned int y, ColorDbl color);
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 };
 
@@ -136,70 +146,58 @@ class Camera : public SceneObject
 {
 protected:
 	glm::mat4 viewMatrix;
-	glm::mat4 perspectiveMatrix;
-	glm::mat4 inverseViewProjectionMatrix;
-
-	float focalOffset;
-	float fovY;
-	float nearClippingPlane;
-	float farClippingPlane;
-
-	float pixelWidth;
-	float pixelHeight;
+	float fovPixelScale = 1.0f;
 
 public:
 	PixelBuffer pixels;
 
-	Camera(unsigned int width, unsigned int height, unsigned int channelsPerPixel, float focalLength = 1.0f, float fov = 90.0f, float nearPlane = 0.01f, float farPlane = 1000.0f)
-		: pixels{width, height, channelsPerPixel}, 
-		  focalOffset{focalLength}, fovY{fov}, 
-		  nearClippingPlane{nearPlane}, farClippingPlane{farPlane},
-		  pixelWidth{2.0f/width}, pixelHeight{2.0f/height}			// coordinates are between [-1,1]
+	Camera(unsigned int width, unsigned int height, unsigned int channelsPerPixel, float fovY)
+		: pixels{width, height, channelsPerPixel}
 	{
-		UpdateMatrices();
+		// Pre-calculate fov scaling for pixel-to-ray generation
+		float halfAngle = (fovY * 0.5f);
+		float radians = halfAngle / 180.0f * float(M_PI);
+		fovPixelScale = tan(radians);
 	};
 
 	~Camera() = default;
 
-	void SetLookAt(vec4 cameraPosition, vec4 targetPosition, vec4 cameraUp)
+	void LookAt(vec4 targetPosition, vec4 cameraUp)
 	{
-		transform.position = cameraPosition;
-		viewMatrix = glm::lookAt(glm::vec3(cameraPosition), vec3(targetPosition), glm::vec3(cameraUp));
-
-		UpdateMatrices();
+		viewMatrix = glm::lookAt(glm::vec3(transform.position), vec3(targetPosition), glm::vec3(cameraUp));
 	}
 
-	Ray EmitRayThroughPixelCenter(unsigned int x, unsigned int y)
+	Ray EmitRayThroughPixelCenter(unsigned int x, unsigned int y) const
 	{
-		const float originX  = -1.0f;
-		const float originY  = 1.0f;
-		const float forwardZ = 1.0f;
-
-		float centerX = originX + x * pixelWidth + pixelWidth / 2.0f;
-		float centerY = originY - y * pixelHeight - pixelHeight / 2.0f;
-
-		/*
-			Note that we use the inverse matrix because we are NOT transforming the world to the camera,
-			we are transforming the ray the other way around.
-
-			TODO: Something is wrong here, because the camera is unreliable and the perspective messes up
-				  when rotating the view.
-		*/
-		glm::vec4 endPoint = inverseViewProjectionMatrix * glm::vec4(centerX, centerY, forwardZ, 1.0f);
-		return Ray(transform.position, endPoint);
+		return GetPixelRay(x + 0.5f, y + 0.5f);
 	}
 
 
 protected:
-	void UpdateMatrices()
+	inline Ray GetPixelRay(float x, float y) const
 	{
-		perspectiveMatrix = glm::perspectiveFov(
-			fovY, 
-			float(pixels.width()), float(pixels.height()), 
-			nearClippingPlane, farClippingPlane
-		);
+		/*
+			When we create a ray through a pixel, we get a pinhole camera.
+			This gives us a projection by default.
+		*/
+		const float xOrigin = -1.0f;
+		const float yOrigin = 1.0f;
 
-		inverseViewProjectionMatrix = glm::inverse(perspectiveMatrix*viewMatrix);
+		vec4 direction {
+			xOrigin + x * pixels.deltaX(),	// x
+			yOrigin - y * pixels.deltaY(),	// y
+			-1.0f,							// z
+			0.0f							// w - homogenous coordinate
+		};
+
+		// Correct ray direction to match field of view and non-square image output
+		direction.x *= fovPixelScale * float(pixels.aspectRatio());
+		direction.y *= fovPixelScale;
+
+		// Rotate ray to face camera direction
+		direction = glm::normalize(viewMatrix * direction);
+
+		return Ray(transform.position, transform.position + direction);
 	}
 };
 

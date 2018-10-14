@@ -21,6 +21,8 @@ static const unsigned int SCREEN_WIDTH = 640;
 static const unsigned int SCREEN_HEIGHT = 480;
 static const unsigned int CHANNELS_PER_PIXEL = 4; // RGBA
 
+static const float CAMERA_FOV = 45.0f;
+
 static const float SCREEN_UPDATE_DELAY = 2.0f;
 static const bool USE_MULTITHREADING = true;
 
@@ -33,30 +35,37 @@ int main()
 	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
 	PixelBuffer pixels(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
 
+	ColorDbl backgroundColor = ColorDbl{ 0.0f, 0.0f, 0.0f, 1.0f };
+
 	/*
 		Initialize scene
 	*/
-	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL};
-	camera.SetLookAt(vec4(0.0f, 0.0f, 20.0f, 1.0f), vec4(0.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f, 1.0f, 0.0f, 1.0f));
-
+	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL, CAMERA_FOV};
+	camera.transform.position = vec4(0.0f, 0.0f, 5.0f, 1.0f);
+	camera.LookAt(vec4(0.0f, 0.0f, 0.0f, 1.0f), vec4(0.0f, 1.0f, 0.0f, 1.0f));
+	
 	Scene scene;
-	SphereObject* sphere = scene.CreateObject<SphereObject>();
-	sphere->radius = 0.5f;
-	sphere->color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-
+	SphereObject* sphere1 = scene.CreateObject<SphereObject>();
 	SphereObject* sphere2 = scene.CreateObject<SphereObject>();
-	sphere2->transform.position = vec4(-2.0, 0.0, -10.0, 1.0);
-	sphere2->radius = 0.5f;
-	sphere2->color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-
 	SphereObject* sphere3 = scene.CreateObject<SphereObject>();
-	sphere3->transform.position = vec4(2.0, 0.0, -10.0, 1.0);
+
+	sphere1->transform.position = vec4(0.0, 0.0, 0.0, 1.0);
+	sphere2->transform.position = vec4(-2.0, 0.0, -2.0, 1.0);
+	sphere3->transform.position = vec4(2.0, 0.0, 2.0, 1.0);
+
+	sphere1->radius = 0.5f;
+	sphere2->radius = 0.5f;
 	sphere3->radius = 0.5f;
+
+	sphere1->color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	sphere2->color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
 	sphere3->color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
 
 	/*
 		Application loop
 	*/
+	bool alreadyRendered = false;
+
 	ApplicationClock clock;
 	float lastScreenUpdate = clock.Time();
 	bool quit = false;
@@ -73,42 +82,50 @@ int main()
 		//while ((clock.Time() - lastScreenUpdate) >= SCREEN_UPDATE_DELAY) 
 		//{}
 
-		/*
-			Let's run path tracing once per pixel as a test
-		*/
-		Ray initialRay;
-		SceneObject* hitResult;
-		float hitDistance;
-		for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
+		if (!alreadyRendered)
 		{
-			for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
-			{
-				initialRay = camera.EmitRayThroughPixelCenter(x, y);
+			alreadyRendered = true;
 
-				if (scene.IntersectRay(initialRay, hitResult, hitDistance))
+			/*
+				Let's run path tracing once per pixel as a test
+			*/
+			Ray initialRay;
+			SceneObject* hitResult;
+			float hitDistance;
+			ColorDbl pixelColor;
+			for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
+			{
+				for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
 				{
-					float fakeDepth = (11.0f - hitDistance) / 1.0f;
-					camera.pixels.SetPixel(x, y, hitResult->color.r*fakeDepth, 
-												 hitResult->color.g*fakeDepth, 
-												 hitResult->color.b*fakeDepth, 
-												 1.0);
-				}
-				else
-				{
-					camera.pixels.SetPixel(x, y, 0.0, 0.0, 0.0, 1.0);
+					initialRay = camera.EmitRayThroughPixelCenter(x, y);
+
+					if (scene.IntersectRay(initialRay, hitResult, hitDistance))
+					{
+						float fakeDepth = abs((camera.transform.position.z + 1.0 - hitDistance) / camera.transform.position.z);
+
+						pixelColor = hitResult->color;
+						pixelColor *= fakeDepth;
+						pixelColor.a = 1.0f;
+						camera.pixels.SetPixel(x, y, pixelColor);
+					}
+					else
+					{
+						camera.pixels.SetPixel(x, y, backgroundColor);
+					}
 				}
 			}
+
+			/*
+				Redraw screen with current ray tracing result
+			*/
+			lastScreenUpdate = clock.Time();
+
+			window.Clear();
+			CopyPixelsToImage(camera.pixels, glImage, USE_MULTITHREADING);
+			glImage.Draw();
+			window.SwapFramebuffer();
 		}
 
-		/*
-			Redraw screen with current ray tracing result
-		*/
-		lastScreenUpdate = clock.Time();
-
-		window.Clear();
-		CopyPixelsToImage(camera.pixels, glImage, USE_MULTITHREADING);
-		glImage.Draw();
-		window.SwapFramebuffer();
 
 		/*
 			Handle input events
