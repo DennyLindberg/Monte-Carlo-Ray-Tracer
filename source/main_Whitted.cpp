@@ -37,7 +37,7 @@ int main()
 	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
 	PixelBuffer pixels(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
 
-	ColorDbl backgroundColor = ColorDbl{ 0.0f, 0.0f, 0.0f, 1.0f };
+	ColorDbl backgroundColor = ColorDbl( 0.0f, 0.0f, 0.0f, 1.0f );
 
 	/*
 		Initialize scene

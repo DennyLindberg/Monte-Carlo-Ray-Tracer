@@ -20,9 +20,9 @@ public:
 		floor = CreateObject<PolygonObject>();
 		walls = CreateObject<PolygonObject>();
 
-		ceiling->color = vec4{ 0.5f, 0.5f, 1.0f, 1.0f };
-		floor->color = vec4{ 0.2f, 0.2f, 0.2f, 1.0f };
-		walls->color = vec4{ 0.5f, 0.2f, 0.3f, 1.0f };
+		ceiling->color = ColorDbl( 0.5f, 0.5f, 1.0f, 1.0f );
+		floor->color   = ColorDbl( 0.2f, 0.2f, 0.2f, 1.0f );
+		walls->color   = ColorDbl( 0.5f, 0.2f, 0.3f, 1.0f );
 
 		// Ceiling corners
 		//	   {  width, height, length }
@@ -68,13 +68,13 @@ public:
 		middleSphere->radius = radius;
 		rightSphere->radius = radius;
 
-		leftSphere->transform.position   = vec4(-radius*2,	-5.0f + radius, 8.0 + radius, 1.0);
-		middleSphere->transform.position = vec4(0.0,		-5.0f + radius, 8.0,		  1.0);
-		rightSphere->transform.position  = vec4(radius*2,	-5.0f + radius, 8.0 - radius, 1.0);
+		leftSphere->position   = vec3(-radius*2,	-5.0f + radius, 8.0 + radius);
+		middleSphere->position = vec3(0.0,		-5.0f + radius, 8.0);
+		rightSphere->position  = vec3(radius*2,	-5.0f + radius, 8.0 - radius);
 
-		leftSphere->color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-		middleSphere->color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-		rightSphere->color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f, 1.0f);
+		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 1.0f);
+		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f, 1.0f);
 	}
 };
 
@@ -104,9 +104,9 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = vec4{ 1.0f, 0.0f, 0.0f, 1.0f };
-		rightWall->color	 = vec4{ 0.0f, 1.0f, 0.0f, 1.0f };
-		whiteSegments->color = vec4{ 1.0f };
+		leftWall->color		 = ColorDbl( 1.0f, 0.0f, 0.0f, 1.0f );
+		rightWall->color	 = ColorDbl( 0.0f, 1.0f, 0.0f, 1.0f );
+		whiteSegments->color = ColorDbl( 1.0f );
 
 		// Box corners
 		vec3 c1{ -halfWidth, halfHeight, -halfLength };
@@ -145,13 +145,13 @@ public:
 		middleSphere->radius = radius;
 		rightSphere->radius  = radius;
 
-		leftSphere->transform.position   = vec4(-radius * 2, -halfHeight + radius,	radius,  1.0);
-		middleSphere->transform.position = vec4(0.0,		 -halfHeight + radius,	0.0,	 1.0);
-		rightSphere->transform.position  = vec4(radius * 2,	 -halfHeight + radius,	-radius, 1.0);
+		leftSphere->position   = vec3(-radius * 2, -halfHeight + radius, radius);
+		middleSphere->position = vec3(0.0,		   -halfHeight + radius, 0.0);
+		rightSphere->position  = vec3(radius * 2,  -halfHeight + radius, -radius);
 
-		leftSphere->color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-		middleSphere->color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
-		rightSphere->color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
+		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f, 1.0f);
+		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 1.0f);
+		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f, 1.0f);
 	}
 
 	void AddExampleLight(ColorDbl lightColor)
@@ -160,8 +160,8 @@ public:
 
 		light->color	  = lightColor;
 		light->type		  = LightSourceType::Rectangle;
-		light->position   = vec3{ 0.0f, halfHeight - 0.001f, 0.0f };
-		light->dimensions = vec2{ halfWidth/2.0f, halfLength/2.0f };
-		light->direction  = vec3{ 0.0f, -1.0f, 0.0f };
+		light->position   = vec3( 0.0f, halfHeight - 0.001f, 0.0f );
+		light->dimensions = vec2( halfWidth/2.0f, halfLength/2.0f );
+		light->direction  = vec3( 0.0f, -1.0f, 0.0f );
 	}
 };

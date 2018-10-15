@@ -66,18 +66,11 @@ struct Pixel
 struct Ray
 {
 	ColorDbl color;
-	vec4 start;
-	vec4 end;
+	vec3 origin;
+	vec3 direction;
 
 	Ray() = default;
-
-	Ray(vec4 p1, vec4 p2) : start{ p1 }, end{ p2 }
-	{}
-
-	Ray(vec3 p1, vec3 p2) : start{ vec4{p1,1.0f} }, end{ vec4{p2,1.0f} }
-	{}
-
-	vec4 Direction() const { return vec4(glm::normalize(vec3(end - start)), 1.0f); }
+	Ray(vec3 start, vec3 dir) : origin{ start }, direction{ dir } {}
 };
 
 struct RayIntersectionInfo
@@ -96,19 +89,19 @@ struct RayIntersectionInfo
 
 struct Triangle
 {
-	vec4 vertex0;
-	vec4 vertex1;
-	vec4 vertex2;
+	vec3 vertex0;
+	vec3 vertex1;
+	vec3 vertex2;
 
-	vec4 normal;
+	vec3 normal;
 
 	// The points must be defined in clockwise order in respect to their normal
 	Triangle(vec3& v0, vec3& v1, vec3& v2)
-		: vertex0{ v0, 1.0f }, vertex1{ v1, 1.0f }, vertex2{ v2, 1.0f }
+		: vertex0{ v0 }, vertex1{ v1 }, vertex2{ v2 }
 	{
 		vec3 u = v1 - v0;
 		vec3 v = v2 - v0;
-		normal = glm::normalize(vec4(glm::cross(u, v), 0.0f));
+		normal = glm::normalize(glm::cross(u, v));
 	}
 
 	bool Intersects(vec3 rayOrigin, vec3 rayDirection, float& t)
@@ -153,17 +146,6 @@ struct Triangle
 	}
 };
 
-class Transform
-{
-public:
-	vec4 position;
-	vec3 rotation;
-	vec3 scale;
-
-	Transform() = default;
-	~Transform() = default;
-};
-
 struct BBOX
 {
 	// TODO: Molly
@@ -172,7 +154,7 @@ struct BBOX
 class SceneObject
 {
 public:
-	Transform transform;
+	vec3 position;
 	ColorDbl color;
 
 	SceneObject() = default;
@@ -219,11 +201,10 @@ public:
 		const float xOrigin = -1.0f;
 		const float yOrigin = 1.0f;
 
-		vec4 direction {
+		vec3 direction {
 			xOrigin + x * pixels.deltaX(),	// x
 			yOrigin - y * pixels.deltaY(),	// y
 			-1.0f,							// z
-			0.0f							// w - homogenous coordinate
 		};
 
 		// Correct ray direction to match field of view and non-square image output
@@ -231,9 +212,9 @@ public:
 		direction.y *= fovPixelScale;
 
 		// Rotate ray to face camera direction
-		direction = glm::normalize(viewMatrix * direction);
+		direction = vec3(viewMatrix * glm::vec4(direction, 0.0f));
 
-		return Ray(vec4(position, 1.0f), vec4(position, 1.0f) + direction);
+		return Ray(position, glm::normalize(direction));
 	}
 };
 
@@ -316,7 +297,7 @@ public:
 		*/
 		float t0, t1;
 
-		vec3 L = vec3(transform.position) - rayOrigin;
+		vec3 L = position - rayOrigin;
 
 		float tca = glm::dot(L, rayDirection);
 		if (tca < 0) return false;
@@ -347,7 +328,7 @@ public:
 
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index)
 	{
-		return glm::normalize(location - vec3(transform.position));
+		return glm::normalize(location - position);
 	}
 };
 
@@ -419,13 +400,10 @@ public:
 		hitInfo.elementIndex = 0;
 		hitInfo.hitDistance = FLOAT_INFINITY;
 
-		vec3 rayOrigin = vec3(ray.start);
-		vec3 rayDirection = vec3(ray.Direction());
-
 		RayIntersectionInfo hitTest;
 		for (SceneObject* object : objects)
 		{
-			if (object->Intersects(rayOrigin, rayDirection, hitTest) && hitTest.hitDistance < hitInfo.hitDistance)
+			if (object->Intersects(ray.origin, ray.direction, hitTest) && hitTest.hitDistance < hitInfo.hitDistance)
 			{
 				hitInfo = hitTest;
 			}
@@ -438,7 +416,8 @@ public:
 	bool HasClearPathToLight(vec3 shadowPoint, LightSource* light) const
 	{
 		RayIntersectionInfo hitInfo;
-		if (!IntersectRay(Ray{shadowPoint, light->position}, hitInfo))
+		vec3 lightDirection = glm::normalize(light->position - shadowPoint);
+		if (!IntersectRay(Ray(shadowPoint, lightDirection), hitInfo))
 		{
 			// There is definitely a clear path to the light
 			return true;
@@ -470,7 +449,7 @@ public:
 			//accumulatedColor += e; // disabled for now
 			
 			// Light on surface contribution ("Diffuse")
-			vec3 intersectionPoint = ray.start + ray.Direction() * hitInfo.hitDistance;
+			vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
 			for (LightSource* lightSource : lights)
 			{
 				// "Shadow Ray"
@@ -485,12 +464,11 @@ public:
 
 			if (traceDepth > 0)
 			{
-				vec3 rayDirection = ray.Direction();
-				vec3 hitLocation = vec3(ray.start) + rayDirection * hitInfo.hitDistance;
-				vec3 normal = hitInfo.object->GetSurfaceNormal(ray.end, hitInfo.elementIndex);
-				vec3 newDirection = glm::reflect(rayDirection, normal);
+				vec3 hitLocation = ray.origin + ray.direction * hitInfo.hitDistance;
+				vec3 normal = hitInfo.object->GetSurfaceNormal(hitLocation, hitInfo.elementIndex);
+				vec3 newDirection = glm::reflect(ray.direction, normal);
 
-				accumulatedColor += TraceRay(Ray{hitLocation, hitLocation + newDirection}, --traceDepth);
+				accumulatedColor += TraceRay(Ray(hitLocation, newDirection), --traceDepth);
 			}
 		}
 		
