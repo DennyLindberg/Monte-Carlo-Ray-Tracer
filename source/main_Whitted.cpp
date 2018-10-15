@@ -21,7 +21,7 @@ static const unsigned int SCREEN_WIDTH = 640;
 static const unsigned int SCREEN_HEIGHT = 480;
 static const unsigned int CHANNELS_PER_PIXEL = 4; // RGBA
 
-static const unsigned int RAY_TRACE_DEPTH = 1;
+static const unsigned int RAY_TRACE_DEPTH = 0;
 
 static const float CAMERA_FOV = 90.0f;
 
@@ -42,11 +42,12 @@ int main()
 	/*
 		Initialize scene
 	*/
-	//CornellBoxScene scene{2.0f, 2.0f, 2.0f};
-	HexagonScene scene;
+	CornellBoxScene scene{2.0f, 2.0f, 2.0f};
+	//HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
+	scene.AddExampleLight({1.0f, 1.0f, 1.0f, 1.0f});
 
 	/*
 		Application loop

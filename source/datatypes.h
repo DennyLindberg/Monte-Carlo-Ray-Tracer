@@ -183,17 +183,6 @@ public:
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index) = 0;
 };
 
-class LightObject : public SceneObject
-{
-public:
-	LightObject(ColorDbl newColor, double intensity)
-	{
-		color = newColor * intensity;
-	}
-
-	~LightObject() = default;
-};
-
 class Camera
 {
 protected:
@@ -381,19 +370,32 @@ public:
 	}
 };
 
+enum class LightSourceType { Point, Sphere, Rectangle, TYPE_COUNT };
+struct LightSource
+{
+	LightSourceType type = LightSourceType::Rectangle;
+	ColorDbl color{ 1.0f };								// alpha is the intensity
+
+	vec3 position;
+	vec3 direction;
+	vec2 dimensions;
+
+	// TODO: Get random point on light surface (PDF)
+	// TODO: Emit ray for photon mapping
+};
+
 class Scene
 {
 protected:
 	std::vector<SceneObject*> objects;	// TODO: std::pointer type
+	std::vector<LightSource*> lights;	// TODO: std::pointer type
 
 public:
 	Scene() = default;
 	~Scene()
 	{
-		for (SceneObject* o : objects)
-		{
-			delete o;
-		}
+		for (SceneObject* o : objects) delete o;
+		for (LightSource* l : lights)  delete l;
 	}
 
 	template<class T>
@@ -402,6 +404,13 @@ public:
 		T* newObject = new T();
 		objects.push_back(newObject);
 		return newObject;
+	}
+
+	LightSource* CreateLightSource()
+	{
+		LightSource* newLight = new LightSource();
+		lights.push_back(newLight);
+		return newLight;
 	}
 
 	bool IntersectRay(Ray& ray, RayIntersectionInfo& hitInfo) const
@@ -425,6 +434,28 @@ public:
 		return (hitInfo.object != nullptr);
 	}
 
+	// "Shadow Ray" function
+	bool HasClearPathToLight(vec3 shadowPoint, LightSource* light) const
+	{
+		RayIntersectionInfo hitInfo;
+		if (!IntersectRay(Ray{shadowPoint, light->position}, hitInfo))
+		{
+			// There is definitely a clear path to the light
+			return true;
+		}
+		else
+		{
+			// We need to determine if the nearest intersected object is
+			// closer than the light source.
+
+			vec3 lightVector = light->position - shadowPoint;
+			float lightDistanceSq = glm::dot(lightVector, lightVector);
+			float hitDistanceSq = hitInfo.hitDistance * hitInfo.hitDistance;
+
+			return lightDistanceSq < hitDistanceSq;
+		}
+	}
+
 	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5) const
 	{
 		float lightIntensity = 0.0f;
@@ -433,14 +464,24 @@ public:
 		RayIntersectionInfo hitInfo;
 		if (IntersectRay(ray, hitInfo))
 		{
-			// Get lights
-			// TODO: Shadow rays
-			float lightIntensity = 0.5f;
-
-			// Add to color
-			ColorDbl visibleColor = hitInfo.object->color;
-			visibleColor *= lightIntensity;
-			accumulatedColor += visibleColor;
+			// Surface emission contribution ("if surface is emissive")
+			const ColorDbl& surfaceColor = hitInfo.object->color;
+			ColorDbl e = surfaceColor.a * surfaceColor;									 
+			//accumulatedColor += e; // disabled for now
+			
+			// Light on surface contribution ("Diffuse")
+			vec3 intersectionPoint = ray.start + ray.Direction() * hitInfo.hitDistance;
+			for (LightSource* lightSource : lights)
+			{
+				// "Shadow Ray"
+				if (HasClearPathToLight(intersectionPoint, lightSource))
+				{
+					// TODO: Non-uniform BRDF
+					// Light -> BRDF contribution
+					ColorDbl l = lightSource->color.a * lightSource->color;
+					accumulatedColor += ColorDbl{ l.r*e.r, l.g*e.g, l.b*e.b, l.a };
+				}
+			}
 
 			if (traceDepth > 0)
 			{

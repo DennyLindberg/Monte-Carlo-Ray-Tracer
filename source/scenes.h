@@ -153,4 +153,15 @@ public:
 		middleSphere->color = vec4(0.0f, 1.0f, 0.0f, 1.0f);
 		rightSphere->color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
 	}
+
+	void AddExampleLight(ColorDbl lightColor)
+	{
+		LightSource* light = CreateLightSource();
+
+		light->color	  = lightColor;
+		light->type		  = LightSourceType::Rectangle;
+		light->position   = vec3{ 0.0f, halfHeight - 0.001f, 0.0f };
+		light->dimensions = vec2{ halfWidth/2.0f, halfLength/2.0f };
+		light->direction  = vec3{ 0.0f, -1.0f, 0.0f };
+	}
 };
