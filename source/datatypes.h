@@ -6,6 +6,8 @@
 #include <vector>
 #include "arithmetic.h"
 
+#define INTERSECTION_ERROR_MARGIN FLT_EPSILON*20.0f // fulhack: This won't work for steep angles.
+
 enum class SurfaceType	   { Diffuse, Specular, Diffuse_Specular, COUNT };
 enum class DiffuseType	   { Lambertian, OrenNayar, COUNT };
 enum class LightSourceType { Point, Sphere, Rectangle, COUNT };
@@ -146,6 +148,7 @@ struct Triangle
 
 		// Determine where and if we intersected
 		t = f * glm::dot(edge2, q);
+		t -= INTERSECTION_ERROR_MARGIN;
 		return (t > EPSILON);
 	}
 };
@@ -324,7 +327,7 @@ public:
 
 		hitInfo.object = this;
 		hitInfo.elementIndex = 0;
-		hitInfo.hitDistance = t0;
+		hitInfo.hitDistance = t0 - INTERSECTION_ERROR_MARGIN;
 
 		return true;
 	}
