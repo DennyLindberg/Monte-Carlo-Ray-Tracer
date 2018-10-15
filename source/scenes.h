@@ -64,17 +64,32 @@ public:
 		SphereObject* middleSphere = CreateObject<SphereObject>();
 		SphereObject* rightSphere = CreateObject<SphereObject>();
 
-		leftSphere->radius = radius;
-		middleSphere->radius = radius;
-		rightSphere->radius = radius;
+		leftSphere->surfaceType = SurfaceType::Diffuse;
+		middleSphere->surfaceType = SurfaceType::Specular;
+		//rightSphere->surfaceType  = SurfaceType::Diffuse_Specular;
 
-		leftSphere->position   = vec3(-radius*2,	-5.0f + radius, 8.0 + radius);
+		leftSphere->radius   = radius;
+		middleSphere->radius = radius;
+		rightSphere->radius  = radius;
+
+		leftSphere->position   = vec3(-radius*2,-5.0f + radius, 8.0 + radius);
 		middleSphere->position = vec3(0.0,		-5.0f + radius, 8.0);
 		rightSphere->position  = vec3(radius*2,	-5.0f + radius, 8.0 - radius);
 
 		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f, 1.0f);
 		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 1.0f);
 		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f, 1.0f);
+	}
+
+	void AddExampleLight(ColorDbl lightColor)
+	{
+		LightSource* light = CreateLightSource();
+
+		light->color = lightColor;
+		light->type = LightSourceType::Rectangle;
+		light->position = vec3(0.0f, 5.0f - 0.001f, 0.0f);
+		light->dimensions = vec2(1.0f, 1.0f);
+		light->direction = vec3(0.0f, -1.0f, 0.0f);
 	}
 };
 
@@ -140,6 +155,10 @@ public:
 		SphereObject* leftSphere   = CreateObject<SphereObject>();
 		SphereObject* middleSphere = CreateObject<SphereObject>();
 		SphereObject* rightSphere  = CreateObject<SphereObject>();
+
+		leftSphere->surfaceType   = SurfaceType::Diffuse;
+		middleSphere->surfaceType = SurfaceType::Specular;
+		//rightSphere->surfaceType  = SurfaceType::Diffuse_Specular;
 
 		leftSphere->radius   = radius;
 		middleSphere->radius = radius;

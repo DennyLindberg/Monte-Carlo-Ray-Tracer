@@ -21,7 +21,7 @@ static const unsigned int SCREEN_WIDTH = 640;
 static const unsigned int SCREEN_HEIGHT = 480;
 static const unsigned int CHANNELS_PER_PIXEL = 4; // RGBA
 
-static const unsigned int RAY_TRACE_DEPTH = 0;
+static const unsigned int RAY_TRACE_DEPTH = 2;
 
 static const float CAMERA_FOV = 90.0f;
 

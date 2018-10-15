@@ -6,6 +6,10 @@
 #include <vector>
 #include "arithmetic.h"
 
+enum class SurfaceType	   { Diffuse, Specular, Diffuse_Specular, COUNT };
+enum class DiffuseType	   { Lambertian, OrenNayar, COUNT };
+enum class LightSourceType { Point, Sphere, Rectangle, COUNT };
+
 class PixelBuffer
 {
 protected:
@@ -156,6 +160,7 @@ class SceneObject
 public:
 	vec3 position;
 	ColorDbl color;
+	SurfaceType surfaceType = SurfaceType::Diffuse;
 
 	SceneObject() = default;
 	~SceneObject() = default;
@@ -351,7 +356,7 @@ public:
 	}
 };
 
-enum class LightSourceType { Point, Sphere, Rectangle, TYPE_COUNT };
+
 struct LightSource
 {
 	LightSourceType type = LightSourceType::Rectangle;
@@ -443,32 +448,57 @@ public:
 		RayIntersectionInfo hitInfo;
 		if (IntersectRay(ray, hitInfo))
 		{
-			// Surface emission contribution ("if surface is emissive")
-			const ColorDbl& surfaceColor = hitInfo.object->color;
-			ColorDbl e = surfaceColor.a * surfaceColor;									 
-			//accumulatedColor += e; // disabled for now
-			
-			// Light on surface contribution ("Diffuse")
+			const SceneObject& object = *hitInfo.object;
 			vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
-			for (LightSource* lightSource : lights)
+
+			// Diffuse contribution
+			switch (object.surfaceType)
 			{
-				// "Shadow Ray"
-				if (HasClearPathToLight(intersectionPoint, lightSource))
+			case SurfaceType::Diffuse:
+			case SurfaceType::Diffuse_Specular:
+				// Surface emission contribution ("if surface is emissive")
+				ColorDbl e = object.color.a * object.color;
+				//accumulatedColor += e;
+
+				// Light on surface contribution ("Diffuse")
+				for (LightSource* lightSource : lights)
 				{
-					// TODO: Non-uniform BRDF
-					// Light -> BRDF contribution
-					ColorDbl l = lightSource->color.a * lightSource->color;
-					accumulatedColor += ColorDbl{ l.r*e.r, l.g*e.g, l.b*e.b, l.a };
+					// "Shadow Ray"
+					if (HasClearPathToLight(intersectionPoint, lightSource))
+					{
+						// Lambertian or OrenNayar?
+
+						// TODO: Non-uniform BRDF
+						// Light -> BRDF contribution
+						ColorDbl l = lightSource->color.a * lightSource->color;
+						accumulatedColor += ColorDbl{ l.r*e.r, l.g*e.g, l.b*e.b, l.a };
+					}
 				}
+				break;
+
+			case SurfaceType::Specular:
+			default:
+				// No surface/emission information to take into account.
+				break;
 			}
 
-			if (traceDepth > 0)
+			// Specular contribution
+			switch (object.surfaceType)
 			{
-				vec3 hitLocation = ray.origin + ray.direction * hitInfo.hitDistance;
-				vec3 normal = hitInfo.object->GetSurfaceNormal(hitLocation, hitInfo.elementIndex);
-				vec3 newDirection = glm::reflect(ray.direction, normal);
+			case SurfaceType::Diffuse_Specular:
+			case SurfaceType::Specular:
+				if (traceDepth > 0)
+				{
+					vec3 normal = hitInfo.object->GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
+					vec3 newDirection = glm::reflect(ray.direction, normal);
+					accumulatedColor += TraceRay(Ray(intersectionPoint, newDirection), --traceDepth);
+				}
+				break;
 
-				accumulatedColor += TraceRay(Ray(hitLocation, newDirection), --traceDepth);
+			case SurfaceType::Diffuse:
+			default:
+				// No reflection part
+				break;
 			}
 		}
 		
