@@ -12,6 +12,7 @@
 #include <fstream>
 #include <memory>
 #include <vector>
+#include <experimental/filesystem>
 
 #include "core.h"
 #include "imageconversion.h"
@@ -32,7 +33,11 @@ int main()
     
     if(loadTrue)
     {
+    
         std::ofstream file("printOut.txt");
+        
+        std::cout << std::filesystem::current_path() << std::endl;
+        
         for (int i = 0; i < load.LoadedMeshes.size(); i++)
         {
             //Copy Mesh

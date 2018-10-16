@@ -23,7 +23,7 @@ libs_folder             = "libs/"
 workspace "Monte Carlo Ray Tracer"
     location("temp/") -- temporary files (sln, proj, obj, pdb, ilk, etc)
     language "C++"
-    cppdialect "gnu++14"  -- flag needed for gcc/clang, visual studio 2017 does not need it
+    cppdialect "gnu++17"  -- flag needed for gcc/clang, visual studio 2017 does not need it
 
     configurations { "Debug", "Release" }
 
