@@ -12,7 +12,7 @@
 #include <fstream>
 #include <memory>
 #include <vector>
-#include <experimental/filesystem>
+//#include <experimental/filesystem>
 
 #include "core.h"
 #include "imageconversion.h"
@@ -36,7 +36,7 @@ int main()
     
         std::ofstream file("printOut.txt");
         
-        std::cout << std::filesystem::current_path() << std::endl;
+        //std::cout << std::filesystem::current_path() << std::endl;
         
         for (int i = 0; i < load.LoadedMeshes.size(); i++)
         {

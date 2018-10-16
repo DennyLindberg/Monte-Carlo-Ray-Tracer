@@ -17,17 +17,17 @@ class PixelBuffer
 protected:
 	std::vector<double> data;
 
-	int dataSize = 0;
-	int imageWidth = 0;
-	int imageHeight = 0;
-	int imageChannelCount = 0;
+	unsigned int dataSize = 0;
+	unsigned int imageWidth = 0;
+	unsigned int imageHeight = 0;
+	unsigned int imageChannelCount = 0;
 
 	double dx = 0.0;
 	double dy = 0.0;
 	double aspect = 1.0;
 
 public:
-	PixelBuffer(int width, int height, int channels)
+	PixelBuffer(unsigned int width, unsigned int height, unsigned int channels)
 		: imageWidth{ width }, imageHeight{ height }, imageChannelCount{ channels }
 	{
 		dataSize = imageWidth * imageHeight * imageChannelCount;
@@ -216,7 +216,7 @@ public:
 		};
 
 		// Correct ray direction to match field of view and non-square image output
-		direction.x *= fovPixelScale * float(pixels.aspectRatio());
+        direction.x *= fovPixelScale * float(pixels.aspectRatio());
 		direction.y *= fovPixelScale;
 
 		// Rotate ray to face camera direction
@@ -340,26 +340,6 @@ public:
 	}
 };
 
-class PlaneObject : public ImplicitObject
-{
-public:
-	PlaneObject() = default;
-	~PlaneObject() = default;
-
-	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo)
-	{
-		// TODO
-	}
-
-	virtual BBOX BoundingBox() { return BBOX(); }	// TODO: Molly
-
-	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index)
-	{
-		return vec3{0.0f, 1.0f, 0.0f};
-	}
-};
-
-
 struct LightSource
 {
 	LightSourceType type = LightSourceType::Rectangle;
@@ -425,7 +405,8 @@ public:
 	{
 		RayIntersectionInfo hitInfo;
 		vec3 lightDirection = glm::normalize(light->position - shadowPoint);
-		if (!IntersectRay(Ray(shadowPoint, lightDirection), hitInfo))
+        Ray shadowRay = Ray(shadowPoint, lightDirection);
+        if (!IntersectRay(shadowRay, hitInfo))
 		{
 			// There is definitely a clear path to the light
 			return true;
@@ -459,26 +440,27 @@ public:
 			{
 			case SurfaceType::Diffuse:
 			case SurfaceType::Diffuse_Specular:
-				// Surface emission contribution ("if surface is emissive")
-				ColorDbl e = object.color.a * object.color;
-				//accumulatedColor += e;
-
-				// Light on surface contribution ("Diffuse")
-				for (LightSource* lightSource : lights)
-				{
-					// "Shadow Ray"
-					if (HasClearPathToLight(intersectionPoint, lightSource))
-					{
-						// Lambertian or OrenNayar?
-
-						// TODO: Non-uniform BRDF
-						// Light -> BRDF contribution
-						ColorDbl l = lightSource->color.a * lightSource->color;
-						accumulatedColor += ColorDbl{ l.r*e.r, l.g*e.g, l.b*e.b, l.a };
-					}
-				}
-				break;
-
+                {
+                    // Surface emission contribution ("if surface is emissive")
+                    ColorDbl e = object.color.a * object.color;
+                    //accumulatedColor += e;
+                    
+                    // Light on surface contribution ("Diffuse")
+                    for (LightSource* lightSource : lights)
+                    {
+                        // "Shadow Ray"
+                        if (HasClearPathToLight(intersectionPoint, lightSource))
+                        {
+                            // Lambertian or OrenNayar?
+                            
+                            // TODO: Non-uniform BRDF
+                            // Light -> BRDF contribution
+                            ColorDbl l = lightSource->color.a * lightSource->color;
+                            accumulatedColor += ColorDbl{ l.r*e.r, l.g*e.g, l.b*e.b, l.a };
+                        }
+                    }
+                    break;
+                }
 			case SurfaceType::Specular:
 			default:
 				// No surface/emission information to take into account.
