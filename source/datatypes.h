@@ -148,7 +148,6 @@ struct Triangle
 
 		// Determine where and if we intersected
 		t = f * glm::dot(edge2, q);
-		t -= INTERSECTION_ERROR_MARGIN;
 		return (t > EPSILON);
 	}
 };
@@ -162,7 +161,7 @@ class SceneObject
 {
 public:
 	vec3 position;
-	ColorDbl color;
+	ColorDbl color = ColorDbl{ 1.0f, 1.0f, 1.0f, 0.0f };
 	SurfaceType surfaceType = SurfaceType::Diffuse;
 
 	SceneObject() = default;
@@ -194,10 +193,10 @@ public:
 
 	~Camera() = default;
 
-	void SetView(vec3 position, vec3 lookAtPosition, vec3 cameraUp)
+	void SetView(vec3 position, vec3 lookAtPosition, vec3 cameraUp = vec3{0.0f, 1.0f, 0.0f})
 	{
 		this->position = position;
-		viewMatrix = glm::lookAt(position, lookAtPosition, cameraUp);
+		viewMatrix = glm::inverse(glm::lookAtRH(position, lookAtPosition, cameraUp));
 	}
 
 	inline Ray GetPixelRay(float x, float y) const
@@ -269,7 +268,7 @@ public:
 		return triangles[index].normal;
 	}
 
-	// The points must be defined in clockwise order in respect to their normal
+	// The points must be defined in ccw order in respect to their normal
 	void AddQuad(vec3 p1, vec3 p2, vec3 p3, vec3 p4)
 	{
 		triangles.push_back(Triangle{ p1, p2, p3 });
@@ -298,6 +297,8 @@ public:
 
 	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo)
 	{
+		if (radius < FLT_EPSILON) return false;
+
 		float radiusSq = radius * radius;
 
 		/*
@@ -327,7 +328,7 @@ public:
 
 		hitInfo.object = this;
 		hitInfo.elementIndex = 0;
-		hitInfo.hitDistance = t0 - INTERSECTION_ERROR_MARGIN;
+		hitInfo.hitDistance = t0;
 
 		return true;
 	}
@@ -340,31 +341,50 @@ public:
 	}
 };
 
-struct LightSource
+class LightQuad : public PolygonObject
 {
-	LightSourceType type = LightSourceType::Rectangle;
-	ColorDbl color{ 1.0f };								// alpha is the intensity
+public:
+	vec3 normal;
+	vec3 xVector;
+	vec3 yVector;
 
-	vec3 position;
-	vec3 direction;
-	vec2 dimensions;
+	LightQuad() = default;
+	~LightQuad() = default;
 
-	// TODO: Get random point on light surface (PDF)
-	// TODO: Emit ray for photon mapping
+	void SetGeometry(vec3 centerPosition, vec3 lightDirection, vec3 sideDirection, vec2 quadDimensions)
+	{
+		normal = glm::normalize(lightDirection);
+		position = centerPosition;
+
+		yVector = glm::normalize(glm::cross(sideDirection, normal));
+		xVector = glm::normalize(glm::cross(yVector, normal));
+
+		xVector *= quadDimensions.x / 2.0f;
+		yVector *= quadDimensions.y / 2.0f;
+
+		vec3 p1 = position - xVector - yVector;
+		vec3 p2 = position - xVector + yVector;
+		vec3 p3 = position + xVector + yVector;
+		vec3 p4 = position + xVector - yVector;
+
+		position += lightDirection*INTERSECTION_ERROR_MARGIN; // We need to offset the center so that we don't collide with it
+
+		AddQuad(p1, p2, p3, p4);
+	}
 };
 
 class Scene
 {
 protected:
 	std::vector<SceneObject*> objects;	// TODO: std::pointer type
-	std::vector<LightSource*> lights;	// TODO: std::pointer type
+	std::vector<SceneObject*> lights;	// TODO: std::pointer type
 
 public:
 	Scene() = default;
 	~Scene()
 	{
 		for (SceneObject* o : objects) delete o;
-		for (LightSource* l : lights)  delete l;
+		// do not delete lights, they are duplicates of objects which are emissive
 	}
 
 	template<class T>
@@ -375,11 +395,16 @@ public:
 		return newObject;
 	}
 
-	LightSource* CreateLightSource()
+	void CacheLights()
 	{
-		LightSource* newLight = new LightSource();
-		lights.push_back(newLight);
-		return newLight;
+		lights.clear();
+		for (SceneObject* o : objects)
+		{
+			if (o->color.a > 0.0f)
+			{
+				lights.push_back(o);
+			}
+		}
 	}
 
 	bool IntersectRay(Ray& ray, RayIntersectionInfo& hitInfo) const
@@ -401,7 +426,7 @@ public:
 	}
 
 	// "Shadow Ray" function
-	bool HasClearPathToLight(vec3 shadowPoint, LightSource* light) const
+	bool HasClearPathToLight(vec3 shadowPoint, SceneObject* light) const
 	{
 		RayIntersectionInfo hitInfo;
 		vec3 lightDirection = glm::normalize(light->position - shadowPoint);
@@ -424,6 +449,17 @@ public:
 		}
 	}
 
+	ColorDbl TraceUnlit(Ray ray) const
+	{
+		RayIntersectionInfo hitInfo;
+		if (IntersectRay(ray, hitInfo))
+		{
+			return ColorDbl(hitInfo.object->color.r, hitInfo.object->color.g, hitInfo.object->color.b, 1.0f);
+		}
+
+		return ColorDbl{ 0.0f };
+	}
+
 	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5) const
 	{
 		float lightIntensity = 0.0f;
@@ -432,8 +468,10 @@ public:
 		RayIntersectionInfo hitInfo;
 		if (IntersectRay(ray, hitInfo))
 		{
-			const SceneObject& object = *hitInfo.object;
+			SceneObject& object = *hitInfo.object;
 			vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
+			vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
+			intersectionPoint += normal*INTERSECTION_ERROR_MARGIN;
 
 			// Diffuse contribution
 			switch (object.surfaceType)
@@ -441,12 +479,14 @@ public:
 			case SurfaceType::Diffuse:
 			case SurfaceType::Diffuse_Specular:
                 {
+					ColorDbl diffuse = object.color;
+
                     // Surface emission contribution ("if surface is emissive")
-                    ColorDbl e = object.color.a * object.color;
-                    //accumulatedColor += e;
+					double emissionIntensity = diffuse.a;
+                    accumulatedColor += emissionIntensity * diffuse;
                     
                     // Light on surface contribution ("Diffuse")
-                    for (LightSource* lightSource : lights)
+                    for (SceneObject* lightSource : lights)
                     {
                         // "Shadow Ray"
                         if (HasClearPathToLight(intersectionPoint, lightSource))
@@ -455,8 +495,9 @@ public:
                             
                             // TODO: Non-uniform BRDF
                             // Light -> BRDF contribution
-                            ColorDbl l = lightSource->color.a * lightSource->color;
-                            accumulatedColor += ColorDbl{ l.r*e.r, l.g*e.g, l.b*e.b, l.a };
+							double lightIntensity = lightSource->color.a;
+                            ColorDbl L = lightIntensity * lightSource->color;
+                            accumulatedColor += ColorDbl{ L.r*diffuse.r, L.g*diffuse.g, L.b*diffuse.b, L.a };
                         }
                     }
                     break;

@@ -20,9 +20,9 @@ public:
 		floor = CreateObject<PolygonObject>();
 		walls = CreateObject<PolygonObject>();
 
-		ceiling->color = ColorDbl( 0.5f, 0.5f, 1.0f, 1.0f );
-		floor->color   = ColorDbl( 0.2f, 0.2f, 0.2f, 1.0f );
-		walls->color   = ColorDbl( 0.5f, 0.2f, 0.3f, 1.0f );
+		ceiling->color = ColorDbl( 1.0f, 1.0f, 1.0f, 0.0f );
+		floor->color   = ColorDbl( 1.0f, 0.0f, 0.0f, 0.0f );
+		walls->color   = ColorDbl( 0.0f, 1.0f, 0.0f, 0.0f );
 
 		// Ceiling corners
 		//	   {  width, height, length }
@@ -41,8 +41,8 @@ public:
 		vec3 f5 = c5; f5.y *= -1.0f;
 		vec3 f6 = c6; f6.y *= -1.0f;
 
-		floor->AddQuad(f1, f2, f3, f4);
-		floor->AddQuad(f4, f5, f6, f1);
+		floor->AddQuad(f1, f4, f3, f2);
+		floor->AddQuad(f1, f6, f5, f4);
 
 		ceiling->AddQuad(c1, c2, c3, c4);
 		ceiling->AddQuad(c4, c5, c6, c1);
@@ -58,6 +58,11 @@ public:
 
 	~HexagonScene() = default;
 
+	virtual void MoveCameraToRecommendedPosition(Camera& camera)
+	{
+		camera.SetView(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 10.0f), vec3(0.0f, 1.0f, 0.0f));
+	}
+
 	void AddExampleSpheres(float radius = 2.0f)
 	{
 		SphereObject* leftSphere = CreateObject<SphereObject>();
@@ -68,28 +73,41 @@ public:
 		middleSphere->surfaceType = SurfaceType::Specular;
 		//rightSphere->surfaceType  = SurfaceType::Diffuse_Specular;
 
-		leftSphere->radius   = radius;
+		leftSphere->radius = radius;
 		middleSphere->radius = radius;
-		rightSphere->radius  = radius;
+		rightSphere->radius = radius;
 
-		leftSphere->position   = vec3(-radius*2,-5.0f + radius, 8.0 + radius);
-		middleSphere->position = vec3(0.0,		-5.0f + radius, 8.0);
-		rightSphere->position  = vec3(radius*2,	-5.0f + radius, 8.0 - radius);
+		float widthOffset = 6.0f - radius;
+		float heightOffset = 5.0f - radius;
+		leftSphere->position = vec3(widthOffset, -heightOffset, 10.0f);
+		middleSphere->position = vec3(0.0f, 0.0f, 10.0f);
+		rightSphere->position = vec3(-widthOffset, heightOffset, 10.0f);
 
-		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f, 1.0f);
-		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 1.0f);
-		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f, 1.0f);
+		leftSphere->color = ColorDbl(1.0f, 0.0f, 0.0f, 0.0f);
+		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 0.0f);
+		rightSphere->color = ColorDbl(0.0f, 0.0f, 1.0f, 0.0f);
 	}
 
-	void AddExampleLight(ColorDbl lightColor)
+	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
 	{
-		LightSource* light = CreateLightSource();
+		vec3 roofCenter{0.0f, 5.0f-0.001f, 10.0f};
 
-		light->color = lightColor;
-		light->type = LightSourceType::Rectangle;
-		light->position = vec3(0.0f, 5.0f - 0.001f, 0.0f);
-		light->dimensions = vec2(1.0f, 1.0f);
-		light->direction = vec3(0.0f, -1.0f, 0.0f);
+		if (usePoint)
+		{
+			SphereObject* pointLight = CreateObject<SphereObject>();
+			pointLight->radius = 0.0f;
+			pointLight->color = lightColor;
+			pointLight->position = roofCenter;
+		}
+		else
+		{
+			LightQuad* light = CreateObject<LightQuad>();
+			light->SetGeometry(roofCenter,				// position
+								{ 0.0f, -1.0f, 0.0f },	// direction
+								{ 1.0f, 0.0f, 0.0f },	// side
+								{ 2.0f, 2.0f });		// dimensions
+			light->color = ColorDbl{ 1.0f, 1.0f, 1.0f, 1.0f };
+		}
 	}
 };
 
@@ -119,15 +137,15 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = ColorDbl( 1.0f, 0.0f, 0.0f, 1.0f );
-		rightWall->color	 = ColorDbl( 0.0f, 1.0f, 0.0f, 1.0f );
-		whiteSegments->color = ColorDbl( 1.0f );
+		leftWall->color		 = ColorDbl( 1.0f, 0.0f, 0.0f, 0.0f );
+		rightWall->color	 = ColorDbl( 0.0f, 1.0f, 0.0f, 0.0f );
+		whiteSegments->color = ColorDbl( 1.0f, 1.0f, 1.0f, 0.0f );
 
 		// Box corners
-		vec3 c1{ -halfWidth, halfHeight, -halfLength };
-		vec3 c2{  halfWidth, halfHeight, -halfLength };
-		vec3 c3{  halfWidth, halfHeight,  halfLength };
-		vec3 c4{ -halfWidth, halfHeight,  halfLength };
+		vec3 c1{ -halfWidth, halfHeight,  halfLength };
+		vec3 c2{  halfWidth, halfHeight,  halfLength };
+		vec3 c3{  halfWidth, halfHeight, -halfLength };
+		vec3 c4{ -halfWidth, halfHeight, -halfLength };
 
 		// Floor corners (same, but height is flipped)
 		vec3 f1 = c1; f1.y *= -1.0f;
@@ -135,19 +153,19 @@ public:
 		vec3 f3 = c3; f3.y *= -1.0f;
 		vec3 f4 = c4; f4.y *= -1.0f;
 
-		leftWall->AddQuad(f1, f4, c4, c1);
-		rightWall->AddQuad(f2, c2, c3, f3);
+		leftWall->AddQuad(f2, c2, c3, f3);
+		rightWall->AddQuad(f1, f4, c4, c1);
 
-		whiteSegments->AddQuad(f1, f2, f3, f4);
-		whiteSegments->AddQuad(c1, c2, c3, c4);
-		whiteSegments->AddQuad(f3, c3, c4, f4);
+		whiteSegments->AddQuad(c1, c4, c3, c2); // Ceiling
+		whiteSegments->AddQuad(f4, f3, c3, c4);	// Back wall
+		whiteSegments->AddQuad(f1, f2, f3, f4);	// Floor
 	}
 
 	~CornellBoxScene() = default;
 
 	virtual void MoveCameraToRecommendedPosition(Camera& camera)
 	{
-		camera.SetView(vec3(0.0f, 0.0f, -2.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+		camera.SetView(vec3(0.0f, 0.0f, 2.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 	}
 
 	void AddExampleSpheres(float radius = 0.25f)
@@ -164,23 +182,37 @@ public:
 		middleSphere->radius = radius;
 		rightSphere->radius  = radius;
 
-		leftSphere->position   = vec3(-radius * 2, -halfHeight + radius, radius);
-		middleSphere->position = vec3(0.0,		   -halfHeight + radius, 0.0);
-		rightSphere->position  = vec3(radius * 2,  -halfHeight + radius, -radius);
+		float widthOffset  = halfWidth - radius;
+		float depthOffset  = halfLength - radius;
+		float heightOffset = halfHeight - radius;
+		leftSphere->position   = vec3(-widthOffset,	-heightOffset, -depthOffset);
+		middleSphere->position = vec3(0, 0, 0);
+		rightSphere->position  = vec3(widthOffset, heightOffset, depthOffset);
 
-		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f, 1.0f);
-		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 1.0f);
-		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f, 1.0f);
+		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f, 0.0f);
+		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 0.0f);
+		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f, 0.0f);
 	}
 
-	void AddExampleLight(ColorDbl lightColor)
+	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
 	{
-		LightSource* light = CreateLightSource();
+		vec3 roofCenter{0.0f, halfHeight - 0.001f, 0.0f};
 
-		light->color	  = lightColor;
-		light->type		  = LightSourceType::Rectangle;
-		light->position   = vec3( 0.0f, halfHeight - 0.001f, 0.0f );
-		light->dimensions = vec2( halfWidth/2.0f, halfLength/2.0f );
-		light->direction  = vec3( 0.0f, -1.0f, 0.0f );
+		if (usePoint)
+		{
+			SphereObject* pointLight = CreateObject<SphereObject>();
+			pointLight->radius = 0.0f;
+			pointLight->color = lightColor;
+			pointLight->position = roofCenter;
+		}
+		else
+		{
+			LightQuad* light = CreateObject<LightQuad>();
+			light->SetGeometry( roofCenter,									// position
+								{ 0.0f, -1.0f, 0.0f },						// direction
+								{ 1.0f, 0.0f, 0.0f },						// side
+								{ halfWidth / 2.0f, halfHeight / 2.0f });	// dimensions
+			light->color = ColorDbl{ 1.0f, 1.0f, 1.0f, 1.0f };
+		}
 	}
 };

@@ -21,6 +21,7 @@ static const unsigned int SCREEN_WIDTH = 640;
 static const unsigned int SCREEN_HEIGHT = 480;
 static const unsigned int CHANNELS_PER_PIXEL = 4; // RGBA
 
+static const bool RAY_TRACE_UNLIT = false;
 static const unsigned int RAY_TRACE_DEPTH = 2;
 
 static const float CAMERA_FOV = 90.0f;
@@ -48,6 +49,7 @@ int main()
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
 	scene.AddExampleLight({1.0f, 1.0f, 1.0f, 1.0f});
+	scene.CacheLights();
 
 	/*
 		Application loop
@@ -84,7 +86,15 @@ int main()
 				for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
 				{
 					cameraRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
-					rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
+
+					if constexpr(RAY_TRACE_UNLIT)
+					{
+						rayColor = scene.TraceUnlit(cameraRay);
+					}
+					else
+					{
+						rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
+					}
 
 					if (rayColor.a != 0.0f)
 					{

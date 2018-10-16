@@ -23,17 +23,18 @@ libs_folder             = "libs/"
 workspace "Monte Carlo Ray Tracer"
     location("temp/") -- temporary files (sln, proj, obj, pdb, ilk, etc)
     language "C++"
-    cppdialect "gnu++14"  -- flag needed for gcc/clang, visual studio 2017 does not need it
 
     configurations { "Debug", "Release" }
 
     if os.host() == "windows" then
+        cppdialect "C++17"
         systemversion(os.winSdkVersion() .. ".0")
         system      "windows"
         platforms { "win64" }
         defines   { "OS_WINDOWS" }        
         
     else -- MACOSX
+        cppdialect "gnu++17"  -- flag needed for gcc/clang, visual studio 2017 does not need it
         system      "macosx"
         platforms { "macosx64" }        
         defines   { "OS_MACOSX" }
