@@ -124,14 +124,11 @@ int main()
 						rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
 					}
 
-					if (rayColor.a != 0.0f) rayColor.a = 1.0f;
-					else					rayColor = backgroundColor;
-
 					camera.pixels.SetPixel(x, y, rayColor);
-					glImage.buffer.SetPixel(x, y, rayColor.r, rayColor.g, rayColor.b, rayColor.a);
+					glImage.buffer.SetPixel(x, y, rayColor.r, rayColor.g, rayColor.b, 1.0);
 				}
 
-				// Only upload every fifth row
+				// Only render frame every fifth row
 				if (y % 5 == 0 || y == SCREEN_HEIGHT-1)
 				{
 					//window.Clear();
