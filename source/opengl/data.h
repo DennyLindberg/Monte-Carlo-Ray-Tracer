@@ -8,22 +8,23 @@
 
 class GLImageBuffer
 {
-protected:
-	std::vector<GLubyte> data;
+public:
+	std::vector<GLubyte> glData; // vector is used to simplify load/save with lodepng
 	GLuint textureId = 0;
-	GLenum pixelFormat = GL_RGBA;
-
-	int dataSize = 0;
-	int imageWidth = 0;
-	int imageHeight = 0;
-	int imageChannelCount = 0;
+	
+	int size = 0;
+	int numPixels = 0;
+	int width = 0;
+	int height = 0;
+	int channelCount = 0;
 
 public:
-	GLImageBuffer(int width, int height, int channels, GLenum format = GL_RGBA)
-		: imageWidth{ width }, imageHeight{ height }, imageChannelCount{ channels }, pixelFormat{ format }
+	GLImageBuffer(int imageWidth, int imageHeight, int imageChannels)
+		: width{ imageWidth }, height{ imageHeight }, channelCount{ imageChannels }
 	{
-		dataSize = imageWidth * imageHeight * imageChannelCount;
-		data.resize(dataSize);
+		numPixels = width * height;
+		size = numPixels * channelCount;
+		glData.resize(size);
 
 		glGenTextures(1, &textureId);
 		UpdateParameters();
@@ -36,18 +37,13 @@ public:
 
 	void UpdateParameters();
 
-	int size() { return dataSize; }
-	int numPixels() { return imageWidth * imageHeight; }
-	int width() { return imageWidth; }
-	int height() { return imageHeight; }
+	inline GLubyte& operator[] (unsigned int i) { return glData[i]; }
 
-	inline GLubyte& operator[] (unsigned int i) { return data[i]; }
 	void SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a);
-	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
+	void SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a);
+
 	void UseForDrawing();
 	void SendToGPU();
-	void FillSquare(unsigned int startX, unsigned int startY, unsigned int endX, unsigned int endY,
-		GLubyte r, GLubyte g, GLubyte b, GLubyte a);
 
 	void FillDebug();
 	void SaveAsPNG(std::string filename, bool incrementNewFile = false);
@@ -96,8 +92,8 @@ protected:
 public:
 	GLImageBuffer buffer;
 
-	GLFullscreenImage(int width, int height, int channels, GLenum format = GL_RGBA)
-		: buffer{ width, height, channels, format }
+	GLFullscreenImage(int width, int height, int channels )
+		: buffer{ width, height, channels }
 	{}
 
 	void Draw()

@@ -13,7 +13,37 @@
 #include <memory>
 
 #include "core.h"
-#include "imageconversion.h"
+
+#include <thread>
+struct ThreadInfo
+{
+	int threadId = 0;
+	int xBegin = 0;
+	int xEnd = 0;
+	int yBegin = 0;
+	int yEnd = 0;
+};
+/*
+	const int numThreads = std::thread::hardware_concurrency();
+	
+	ApplicationClock performanceTimer;
+	performanceTimer.Tick();
+
+	std::vector<std::thread> t(numThreads);
+	std::vector<double> maxValues(numThreads);
+	for (int i = 0; i < numThreads; i++)
+	{
+		ThreadInfo info = { &buffer, &glImage, &maxValues[i], i, numThreads };
+		t[i] = std::thread(DetermineMaxValue_threaded, info);
+	}
+	for (int i = 0; i < numThreads; i++)
+	{
+		t[i].join();
+	}
+
+	performanceTimer.Tick();
+	std::cout << "Image conversion (" + (enableMultithreading ? (std::to_string(numThreads) + " threads") : "single thread") + "): " + std::to_string(performanceTimer.DeltaTime()) + " s\r\n";
+*/
 
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
@@ -36,8 +66,6 @@ int main()
 	window.Clear();
 
 	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
-	PixelBuffer pixels(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
-
 	ColorDbl backgroundColor = ColorDbl( 0.0f, 0.0f, 0.0f, 1.0f );
 
 	/*
@@ -81,9 +109,9 @@ int main()
 			*/
 			Ray cameraRay;
 			ColorDbl rayColor;
-			for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
+			for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
 			{
-				for (unsigned int y = 0; y < SCREEN_HEIGHT; ++y)
+				for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
 				{
 					cameraRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
 
@@ -96,28 +124,25 @@ int main()
 						rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
 					}
 
-					if (rayColor.a != 0.0f)
-					{
-						rayColor.a = 1.0f;
-						camera.pixels.SetPixel(x, y, rayColor);
-					}
-					else
-					{
-						camera.pixels.SetPixel(x, y, backgroundColor);
-					}
+					if (rayColor.a != 0.0f) rayColor.a = 1.0f;
+					else					rayColor = backgroundColor;
+
+					camera.pixels.SetPixel(x, y, rayColor);
+					glImage.buffer.SetPixel(x, y, rayColor.r, rayColor.g, rayColor.b, rayColor.a);
+				}
+
+				// Only upload every fifth row
+				if (y % 5 == 0 || y == SCREEN_HEIGHT-1)
+				{
+					//window.Clear();
+					glImage.Draw();
+					window.SwapFramebuffer();
+					lastScreenUpdate = clock.Time();
 				}
 			}
-
-			/*
-				Redraw screen with current ray tracing result
-			*/
-			lastScreenUpdate = clock.Time();
-			CopyPixelsToImage(camera.pixels, glImage, USE_MULTITHREADING);
 		}
 
-		window.Clear();
-		glImage.Draw();
-		window.SwapFramebuffer();
+
 
 		/*
 			Handle input events

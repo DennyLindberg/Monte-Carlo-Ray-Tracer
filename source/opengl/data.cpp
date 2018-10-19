@@ -8,6 +8,10 @@
 #include <memory>
 #include "../thirdparty/lodepng.h"
 
+#define INTERNAL_PIXEL_FORMAT GL_RGBA
+#define PIXEL_FORMAT GL_BGRA
+#define PIXEL_TYPE GL_UNSIGNED_INT_8_8_8_8_REV
+
 void GLImageBuffer::UpdateParameters()
 {
 	glBindTexture(GL_TEXTURE_2D, textureId);
@@ -15,21 +19,26 @@ void GLImageBuffer::UpdateParameters()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageWidth, imageHeight, 0, pixelFormat, GL_UNSIGNED_BYTE, (GLvoid*)data.data());
+	glTexImage2D(GL_TEXTURE_2D, 0, INTERNAL_PIXEL_FORMAT, width, height, 0, PIXEL_FORMAT, PIXEL_TYPE, (GLvoid*)glData.data());
+
+	// TODO: Can textures be uploaded as float values without driver swizzling/conversions?
 }
 
 void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a)
 {
-	unsigned int pixelIndex = PixelArrayIndex(x, y);
-	data[pixelIndex] = r;
-	data[pixelIndex + 1] = g;
-	data[pixelIndex + 2] = b;
-	data[pixelIndex + 3] = a;
+	// Note that the bytes are stored in BGRA order
+	// https://www.khronos.org/opengl/wiki/Pixel_Transfer
+
+	unsigned int pixelIndex = (y * width + x) * channelCount;
+	glData[pixelIndex] = b;
+	glData[pixelIndex + 1] = g;
+	glData[pixelIndex + 2] = r;
+	glData[pixelIndex + 3] = a;
 }
 
-unsigned int GLImageBuffer::PixelArrayIndex(unsigned int x, unsigned int y)
+void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a)
 {
-	return y * imageWidth * imageChannelCount + x * imageChannelCount;
+	SetPixel(x, y, GLubyte(r*255.0), GLubyte(g*255.0), GLubyte(b*255.0), GLubyte(a*255.0));
 }
 
 void GLImageBuffer::UseForDrawing()
@@ -41,29 +50,17 @@ void GLImageBuffer::UseForDrawing()
 void GLImageBuffer::SendToGPU()
 {
 	glBindTexture(GL_TEXTURE_2D, textureId);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, imageWidth, imageHeight, pixelFormat, GL_UNSIGNED_BYTE, (GLvoid*)data.data());
-}
-
-void GLImageBuffer::FillSquare(unsigned int startX, unsigned int startY, unsigned int endX, unsigned int endY,
-	GLubyte r, GLubyte g, GLubyte b, GLubyte a)
-{
-	for (unsigned int x = startX; x <= endX; ++x)
-	{
-		for (unsigned int y = startY; y <= endY; ++y)
-		{
-			SetPixel(x, y, r, g, b, a);
-		}
-	}
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, PIXEL_FORMAT, PIXEL_TYPE, (GLvoid*)glData.data());
 }
 
 void GLImageBuffer::FillDebug()
 {
-	for (int x = 0; x < imageWidth; ++x)
+	for (int x = 0; x < width; ++x)
 	{
-		for (int y = 0; y < imageHeight; ++y)
+		for (int y = 0; y < height; ++y)
 		{
-			GLubyte r = (GLubyte)(x / (float)imageWidth * 255);
-			GLubyte g = (GLubyte)(y / (float)imageHeight * 255);
+			GLubyte r = (GLubyte)(x / (float)width * 255);
+			GLubyte g = (GLubyte)(y / (float)height * 255);
 			GLubyte b = 0;
 			GLubyte a = 255;
 			SetPixel(x, y, r, g, b, a);
@@ -73,7 +70,7 @@ void GLImageBuffer::FillDebug()
 
 void GLImageBuffer::SaveAsPNG(std::string filename, bool incrementNewFile)
 {
-	unsigned error = lodepng::encode(filename, data, (unsigned int)imageWidth, (unsigned int)imageHeight);
+	unsigned error = lodepng::encode(filename, glData, (unsigned int)width, (unsigned int)height);
 	if (error)
 	{
 		std::cout << "encoder error " << error << ": " << lodepng_error_text(error) << std::endl;
@@ -84,15 +81,15 @@ void GLImageBuffer::LoadPNG(std::string filename)
 {
 	unsigned sourceWidth, sourceHeight;
 
-	data.clear();
-	data.shrink_to_fit();
+	glData.clear();
+	glData.shrink_to_fit();
 
 	std::vector<unsigned char> png;
 	lodepng::State state;
 	unsigned error = lodepng::load_file(png, filename);
 	if (!error)
 	{
-		error = lodepng::decode(data, sourceWidth, sourceHeight, state, png);
+		error = lodepng::decode(glData, sourceWidth, sourceHeight, state, png);
 	}
 
 	if (error)
@@ -102,22 +99,22 @@ void GLImageBuffer::LoadPNG(std::string filename)
 	else
 	{
 		const LodePNGColorMode& color = state.info_png.color;
-		switch (color.colortype)
-		{
-		case LCT_RGB:
-			pixelFormat = GL_RGB;
-			break;
-		case LCT_RGBA:
-		default:
-			pixelFormat = GL_RGBA;
-			break;
-		}
+		//switch (color.colortype)
+		//{
+		//case LCT_RGB:
+		//	PIXEL_FORMAT = GL_RGB;
+		//	break;
+		//case LCT_RGBA:
+		//default:
+		//	PIXEL_FORMAT = GL_RGBA;
+		//	break;
+		//}
 
-		imageWidth = sourceWidth;
-		imageHeight = sourceHeight;
-		imageChannelCount = lodepng_get_channels(&color);
+		width = sourceWidth;
+		height = sourceHeight;
+		channelCount = lodepng_get_channels(&color);
 
-		dataSize = imageWidth * imageHeight * imageChannelCount;
+		size = width * height * channelCount;
 
 		UpdateParameters();
 	}
