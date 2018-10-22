@@ -16,6 +16,8 @@
 
 #include <thread>
 
+UniformRandomGenerator uniformGenerator;
+
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
 static const unsigned int SCREEN_WIDTH = 640;

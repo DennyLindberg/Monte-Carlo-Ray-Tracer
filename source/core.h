@@ -11,6 +11,7 @@
 #include "datatypes.h"
 #include "scenes.h"
 #include "OBJ_Loader.h"
+#include "rand.h"
 
 //#define GLM_FORCE_RADIANS 1
 #include "glm/glm.hpp"
