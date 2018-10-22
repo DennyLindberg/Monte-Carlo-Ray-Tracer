@@ -30,8 +30,8 @@ static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
-static const unsigned int RAY_TRACE_DEPTH = 3;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 8;
+static const unsigned int RAY_TRACE_DEPTH = 5;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 10;
 
 static const bool USE_MULTITHREADING = true;
 typedef std::vector<std::thread> ThreadVector;
@@ -83,6 +83,7 @@ inline void Trace(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene&
 {
 	if constexpr (RAY_TRACE_RANDOM)
 	{
+
 		unsigned int x = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
 		unsigned int y = (unsigned int)(uniformGenerator.RandomFloat(float(yBegin), float(yEnd)));
 		TraceSubPixels(x, y, camera, scene, glImage);
@@ -108,7 +109,7 @@ void TraceThreaded(ThreadInfo thread)
 
 	if (thread.id == NUM_SUPPORTED_THREADS - 1)
 	{
-		yEnd = SCREEN_HEIGHT;
+		yEnd = SCREEN_HEIGHT-1;
 	}
 
 	do
