@@ -24,23 +24,20 @@ static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
 static const unsigned int SCREEN_WIDTH = 640;
 static const unsigned int SCREEN_HEIGHT = 480;
-
-static const bool RAY_TRACE_UNLIT = false;
-static const unsigned int RAY_TRACE_DEPTH = 3;
-static const unsigned int RAY_COUNT_PER_STEP = 12;
+static const float SCREEN_UPDATE_DELAY = 0.1f;
 
 static const float CAMERA_FOV = 90.0f;
 
-static const float SCREEN_UPDATE_DELAY = 0.0f;
+static const bool RAY_TRACE_UNLIT = false;
+static const bool RAY_TRACE_RANDOM = true;
+static const unsigned int RAY_TRACE_DEPTH = 3;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 8;
 
 static const bool USE_MULTITHREADING = true;
 typedef std::vector<std::thread> ThreadVector;
 const unsigned int NUM_SUPPORTED_THREADS = std::thread::hardware_concurrency();
 ThreadVector threads(NUM_SUPPORTED_THREADS);
 
-/*
-	Multi-threading details
-*/
 struct ThreadInfo
 {
 	unsigned int id = 0;
@@ -50,68 +47,59 @@ struct ThreadInfo
 	bool loop = false;
 };
 
-void StopThreads(ThreadVector& threads)
-{
-	for (std::thread& thread : threads)
-	{
-		thread.~thread();
-	}
-}
-
 /*
 	Main ray tracing function
 */
-void TraceRegionUnlit(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
+inline void TraceSubPixels(unsigned int x, unsigned int y, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
 {
-	Ray cameraRay;
-	ColorDbl rayColor;
-	unsigned int pixelIndex = 0;
-	for (unsigned int y = yBegin; y < yEnd; ++y)
-	{
-		for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
-		{
-			cameraRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
-			rayColor = scene.TraceUnlit(cameraRay);
-
-			pixelIndex = camera.pixels.PixelArrayIndex(x, y);
-			camera.pixels.SetPixel(pixelIndex, rayColor);
-			glImage.buffer.SetPixel(x, y, rayColor.r, rayColor.g, rayColor.b, 1.0);
-		}
-	}
-}
-
-void TraceRegion(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
-{
-	// Pick a random pixel to trace
-	unsigned int x = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
-	unsigned int y = (unsigned int)(uniformGenerator.RandomFloat(float(yBegin), float(yEnd)));
-	unsigned int pixelIndex = camera.pixels.PixelArrayIndex(x, y);
-
 	// Each pixel will trace a certain number of random rays in random directions (subpixels)
-	int rayCount = RAY_COUNT_PER_STEP;
+	unsigned int pixelIndex = camera.pixels.PixelArrayIndex(x, y);
+	int rayCount = RAY_COUNT_PER_PIXEL;
 	float sx = 0.0f;
 	float sy = 0.0f;
 
 	// Run trace for all rays
 	Ray cameraRay;
 	ColorDbl rayColor;
-	do
+	while (--rayCount >= 0)
 	{
 		sx = uniformGenerator.RandomFloat();
 		sy = uniformGenerator.RandomFloat();
 
 		cameraRay = camera.GetPixelRay(x + sx, y + sy);
-		rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
 
+		if constexpr (RAY_TRACE_UNLIT) rayColor = scene.TraceUnlit(cameraRay);
+		else						   rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
+		
 		camera.pixels.AddRayColor(pixelIndex, rayColor);
-	} while (--rayCount >= 0);
+	}
 
 	// When done, normalize colors
 	ColorDbl outputColor = camera.pixels.GetPixelColor(x, y) / double(camera.pixels.GetRayCount(pixelIndex));
 	glImage.buffer.SetPixel(x, y, outputColor.r, outputColor.g, outputColor.b, 1.0);
 }
 
-void TraceRegionThreaded(ThreadInfo thread)
+inline void Trace(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
+{
+	if constexpr (RAY_TRACE_RANDOM)
+	{
+		unsigned int x = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
+		unsigned int y = (unsigned int)(uniformGenerator.RandomFloat(float(yBegin), float(yEnd)));
+		TraceSubPixels(x, y, camera, scene, glImage);
+	}
+	else
+	{
+		for (unsigned int y = yBegin; y < yEnd; ++y)
+		{
+			for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
+			{
+				TraceSubPixels(x, y, camera, scene, glImage);
+			}
+		}
+	}
+}
+
+void TraceThreaded(ThreadInfo thread)
 {
 	unsigned int yStep = SCREEN_HEIGHT / NUM_SUPPORTED_THREADS;
 
@@ -125,20 +113,12 @@ void TraceRegionThreaded(ThreadInfo thread)
 
 	do
 	{
-		if constexpr (RAY_TRACE_UNLIT)
-		{
-			TraceRegionUnlit(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
-		}
-		else
-		{
-			TraceRegion(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
-		}
+		Trace(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
 	} while (thread.loop && !quit);
 }
 
 int main()
 {
-
 	OpenGLWindow window("OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
 	window.Clear();
@@ -148,8 +128,8 @@ int main()
 	/*
 		Initialize scene
 	*/
-	CornellBoxScene scene{2.0f, 2.0f, 2.0f};
-	//HexagonScene scene;
+	//CornellBoxScene scene{2.0f, 2.0f, 2.0f};
+	HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
@@ -160,144 +140,71 @@ int main()
 	/*
 		Application loop
 	*/
-	bool alreadyRendered = false;
-
 	ApplicationClock clock;
 	float lastScreenUpdate = clock.Time();
-
-	if (RAY_TRACE_UNLIT)
+	if (USE_MULTITHREADING)
 	{
-		while (!quit)
+		// Additional threads are created from id=1 because id=0 is the main thread.
+		for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
 		{
-			if (!alreadyRendered)
-			{
-				if (!USE_MULTITHREADING)
-				{
-					TraceRegion(0, SCREEN_HEIGHT, camera, scene, glImage);
-					clock.Tick();
-				}
-				else
-				{
-					alreadyRendered = true;
-					lastScreenUpdate = clock.Time();
-					/*
-					Main thread has two jobs:
-					1. Render the first region
-					2. Update the screen
-
-					It will update the screen after each rendered row.
-					*/
-
-					// Additional threads are created from id=1 because id=0 is the main thread.
-					for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
-					{
-						ThreadInfo info = { i, &camera, &scene, &glImage, false };
-						threads[i] = std::thread(TraceRegionThreaded, info);
-					}
-
-					unsigned int yStep = SCREEN_HEIGHT / NUM_SUPPORTED_THREADS;
-					for (unsigned int y = 1; y < yStep; y++)
-					{
-						TraceRegion(y, y + 1, camera, scene, glImage);
-
-						clock.Tick();
-						if ((clock.Time() - lastScreenUpdate) >= SCREEN_UPDATE_DELAY)
-						{
-							window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
-							glImage.Draw();
-							window.SwapFramebuffer();
-							lastScreenUpdate = clock.Time();
-						}
-					}
-
-					// When main thread is done, wait for other threads to catch up
-					for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
-					{
-						threads[i].join();
-					}
-				}
-			}
-
-			glImage.Draw();
-			window.SwapFramebuffer();
-			lastScreenUpdate = clock.Time();
-
-			SDL_Event event;
-			while (SDL_PollEvent(&event))
-			{
-				if (event.type == SDL_QUIT)
-				{
-					quit = true;
-				}
-				else if (event.type == SDL_KEYDOWN)
-				{
-					switch (event.key.keysym.sym)
-					{
-					case SDLK_ESCAPE:
-						quit = true;
-						break;
-					case SDLK_s:
-						TakeScreenshot("screenshot.png", SCREEN_WIDTH, SCREEN_HEIGHT);
-						break;
-					}
-				}
-			}
+			ThreadInfo info = { i, &camera, &scene, &glImage, RAY_TRACE_RANDOM };
+			threads[i] = std::thread(TraceThreaded, info);
 		}
 	}
-	else
+
+	unsigned int y = 0;
+	unsigned int mainThreadYMax = USE_MULTITHREADING ? SCREEN_HEIGHT / NUM_SUPPORTED_THREADS : SCREEN_HEIGHT;
+	while (!quit)
 	{
-		if (USE_MULTITHREADING)
+		if constexpr (RAY_TRACE_RANDOM)
 		{
-			// Additional threads are created from id=1 because id=0 is the main thread.
-			for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
-			{
-				ThreadInfo info = { i, &camera, &scene, &glImage, true };
-				threads[i] = std::thread(TraceRegionThreaded, info);
-			}
+			Trace(0, mainThreadYMax, camera, scene, glImage);
+		}
+		else if (y < mainThreadYMax)
+		{
+			Trace(y, y + 1, camera, scene, glImage);
+			y++;
 		}
 
-		unsigned int mainThreadYMax = USE_MULTITHREADING ? SCREEN_HEIGHT / NUM_SUPPORTED_THREADS : SCREEN_HEIGHT;
-		while (!quit)
+		clock.Tick();
+		if ((clock.Time() - lastScreenUpdate) >= SCREEN_UPDATE_DELAY)
 		{
-			TraceRegion(0, mainThreadYMax, camera, scene, glImage);
-			clock.Tick();
 			window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
 			glImage.Draw();
 			window.SwapFramebuffer();
-
-			/*
-			Handle input events
-			*/
-			SDL_Event event;
-			while (SDL_PollEvent(&event))
-			{
-				if (event.type == SDL_QUIT)
-				{
-					quit = true;
-				}
-				else if (event.type == SDL_KEYDOWN)
-				{
-					switch (event.key.keysym.sym)
-					{
-					case SDLK_ESCAPE:
-						quit = true;
-						break;
-					case SDLK_s:
-						TakeScreenshot("screenshot.png", SCREEN_WIDTH, SCREEN_HEIGHT);
-						break;
-					}
-				}
-			}
+			lastScreenUpdate = clock.Time();
 		}
 
-		if (USE_MULTITHREADING)
+		SDL_Event event;
+		while (SDL_PollEvent(&event))
 		{
-			for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
+			if (event.type == SDL_QUIT)
 			{
-				threads[i].join();
+				quit = true;
+			}
+			else if (event.type == SDL_KEYDOWN)
+			{
+				switch (event.key.keysym.sym)
+				{
+				case SDLK_ESCAPE:
+					quit = true;
+					break;
+				case SDLK_s:
+					TakeScreenshot("screenshot.png", SCREEN_WIDTH, SCREEN_HEIGHT);
+					break;
+				}
 			}
 		}
 	}
+
+	if (USE_MULTITHREADING)
+	{
+		for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
+		{
+			threads[i].join();
+		}
+	}
+	
 
 	return 0;
 }
