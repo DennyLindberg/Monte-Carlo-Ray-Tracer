@@ -16,14 +16,13 @@ public:
 	int numPixels = 0;
 	int width = 0;
 	int height = 0;
-	int channelCount = 0;
 
 public:
-	GLImageBuffer(int imageWidth, int imageHeight, int imageChannels)
-		: width{ imageWidth }, height{ imageHeight }, channelCount{ imageChannels }
+	GLImageBuffer(int imageWidth, int imageHeight)
+		: width{ imageWidth }, height{ imageHeight }
 	{
 		numPixels = width * height;
-		size = numPixels * channelCount;
+		size = numPixels * 4;
 		glData.resize(size);
 
 		glGenTextures(1, &textureId);
@@ -42,8 +41,6 @@ public:
 	inline void SetPixel(unsigned int pixelIndex, GLubyte r, GLubyte g, GLubyte b, GLubyte a);
 	void SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a);
 	void SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a);
-
-	void SetPixel(unsigned int pixelIndex, double r, double g, double b, double a);
 
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 
@@ -97,8 +94,8 @@ protected:
 public:
 	GLImageBuffer buffer;
 
-	GLFullscreenImage(int width, int height, int channels )
-		: buffer{ width, height, channels }
+	GLFullscreenImage(int width, int height )
+		: buffer{ width, height }
 	{}
 
 	void Draw()

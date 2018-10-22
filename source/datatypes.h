@@ -22,17 +22,16 @@ protected:
 	unsigned int dataSize = 0;
 	unsigned int imageWidth = 0;
 	unsigned int imageHeight = 0;
-	unsigned int imageChannelCount = 0;
 
 	double dx = 0.0;
 	double dy = 0.0;
 	double aspect = 1.0;
 
 public:
-	PixelBuffer(unsigned int width, unsigned int height, unsigned int channels)
-		: imageWidth{ width }, imageHeight{ height }, imageChannelCount{ channels }
+	PixelBuffer(unsigned int width, unsigned int height)
+		: imageWidth{ width }, imageHeight{ height }
 	{
-		dataSize = imageWidth * imageHeight * imageChannelCount;
+		dataSize = imageWidth * imageHeight * 3;
 		data.resize(dataSize);
 		rayCount.resize(dataSize);
 
@@ -54,7 +53,7 @@ public:
 	double aspectRatio() const { return aspect; }
 
 	inline double& operator[] (unsigned int i) { return data[i]; }
-	void SetPixel(unsigned int pixelIndex, double r, double g, double b, double a);
+	void SetPixel(unsigned int pixelIndex, double r, double g, double b);
 	void SetPixel(unsigned int pixelIndex, ColorDbl color);
 	void AddRayColor(unsigned int pixelIndex, ColorDbl color);
 	uint64_t GetRayCount(unsigned int pixelIndex);
@@ -168,7 +167,8 @@ class SceneObject
 {
 public:
 	vec3 position;
-	ColorDbl color = ColorDbl{ 1.0f, 1.0f, 1.0f, 0.0f };
+	ColorDbl color = ColorDbl{ 1.0f, 1.0f, 1.0f };
+	ColorDbl emission = ColorDbl{ 0.0f, 0.0f, 0.0f };
 	SurfaceType surfaceType = SurfaceType::Diffuse;
 
 	SceneObject() = default;
@@ -191,8 +191,8 @@ protected:
 public:
 	PixelBuffer pixels;
 
-	Camera(unsigned int width, unsigned int height, unsigned int channelsPerPixel, float fovY)
-		: pixels{width, height, channelsPerPixel}
+	Camera(unsigned int width, unsigned int height, float fovY)
+		: pixels{width, height}
 	{
 		// Pre-calculate fov scaling for pixel-to-ray generation
 		float halfAngle = (fovY * 0.5f);
@@ -357,7 +357,11 @@ public:
 	vec3 xVector;
 	vec3 yVector;
 
-	LightQuad() = default;
+	LightQuad(ColorDbl lightEmission = ColorDbl{ 1.0 })
+	{
+		emission = lightEmission;
+	}
+
 	~LightQuad() = default;
 
 	void SetGeometry(vec3 centerPosition, vec3 lightDirection, vec3 sideDirection, vec2 quadDimensions)
@@ -390,6 +394,8 @@ protected:
 	UniformRandomGenerator uniformGenerator;
 
 public:
+	ColorDbl backgroundColor = {0.0f, 0.0f, 0.0f};
+
 	Scene() = default;
 	~Scene()
 	{
@@ -410,7 +416,7 @@ public:
 		lights.clear();
 		for (SceneObject* o : objects)
 		{
-			if (o->color.a > 0.0f)
+			if (o->emission.r > 0.0 || o->emission.g > 0.0 || o->emission.b > 0.0)
 			{
 				lights.push_back(o);
 			}
@@ -464,7 +470,7 @@ public:
 		RayIntersectionInfo hitInfo;
 		if (IntersectRay(ray, hitInfo))
 		{
-			return ColorDbl(hitInfo.object->color.r, hitInfo.object->color.g, hitInfo.object->color.b, 1.0f);
+			return ColorDbl(hitInfo.object->color.r, hitInfo.object->color.g, hitInfo.object->color.b);
 		}
 
 		return ColorDbl{ 0.0f };
@@ -472,91 +478,73 @@ public:
 
 	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5)
 	{
-		float lightIntensity = 0.0f;
-		ColorDbl accumulatedColor{ 0.0f };
-
 		RayIntersectionInfo hitInfo;
-		if (IntersectRay(ray, hitInfo))
+		if (!IntersectRay(ray, hitInfo))
 		{
-			SceneObject& object = *hitInfo.object;
-			vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
-			vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
-			intersectionPoint += normal*INTERSECTION_ERROR_MARGIN;
+			return backgroundColor;
+		}
 
-			// Diffuse contribution
-			switch (object.surfaceType)
+		SceneObject& object = *hitInfo.object;
+		vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
+		vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
+		intersectionPoint += normal*INTERSECTION_ERROR_MARGIN;
+
+		if (traceDepth == 0)
+		{
+			return object.emission;
+		}
+
+		if (object.surfaceType == SurfaceType::Diffuse)
+		{
+			// Light on surface contribution ("Diffuse")
+			ColorDbl lightContribution{ 0.0f };
+			for (SceneObject* lightSource : lights)
 			{
-			case SurfaceType::Diffuse:
-			case SurfaceType::Diffuse_Specular:
-                {
-					ColorDbl diffuse = object.color;
-
-                    // Surface emission contribution ("if surface is emissive")
-					double emissionIntensity = diffuse.a;
-                    accumulatedColor += emissionIntensity * diffuse;
-                    
-                    // Light on surface contribution ("Diffuse")
-                    for (SceneObject* lightSource : lights)
-                    {
-                        // "Shadow Ray"
-                        if (HasClearPathToLight(intersectionPoint, lightSource))
-                        {
-                            // Lambertian or OrenNayar?
-                            
-                            // TODO: Non-uniform BRDF
-                            // Light -> BRDF contribution
-							double lightIntensity = lightSource->color.a;
-                            ColorDbl L = lightIntensity * lightSource->color;
-                            accumulatedColor += ColorDbl{ L.r*diffuse.r, L.g*diffuse.g, L.b*diffuse.b, L.a };
-                        }
-                    }
-                    break;
-                }
-			case SurfaceType::Specular:
-			default:
-				// No surface/emission information to take into account.
-				break;
-			}
-
-			if (traceDepth > 0)
-			{
-				// Specular contribution
-				switch (object.surfaceType)
+				// "Shadow Ray"
+				// TODO: Pick random point on light, then store info for later use
+				if (HasClearPathToLight(intersectionPoint, lightSource))
 				{
-				case SurfaceType::Diffuse_Specular:
-				case SurfaceType::Specular:
-					vec3 normal = hitInfo.object->GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
-					vec3 newDirection = glm::reflect(ray.direction, normal);
-					accumulatedColor += TraceRay(Ray(intersectionPoint, newDirection), --traceDepth);
-					break;
+					auto multiply = [](const ColorDbl& u, const ColorDbl& v) { 
+						return ColorDbl{u.r*v.r, u.g*v.g, u.b*v.b};
+					};
 
-				case SurfaceType::Diffuse:
-				default:
-					// No reflection part
-					break;
-				}
+					// Lambertian or OrenNayar?
+					// TODO: Non-uniform BRDF
+					// Light -> BRDF contribution
 
-				// Indirect diffuse
-				switch (object.surfaceType)
-				{
-				case SurfaceType::Diffuse:
-				case SurfaceType::Diffuse_Specular:
-					{
-						float inclinationAngle = uniformGenerator.RandomFloat(0, float(M_PI_HALF));
-						float azimuthAngle = uniformGenerator.RandomFloat(0, float(M_TWO_PI));
-						Ray newRay = GetHemisphereRay(intersectionPoint, ray.direction, normal, inclinationAngle, azimuthAngle);
-				
-						accumulatedColor += TraceRay(newRay, --traceDepth);
-					}
+					vec3 lightVector = lightSource->position - intersectionPoint;
+					const ColorDbl& f = object.color;
+					const ColorDbl& L = lightSource->color;
 
-				case SurfaceType::Specular:
-				default:
-					break;
+					//lightContribution += multiply(L, f) * M_ONE_OVER_PI;
+
+					//double cos_a_max = sqrt(1 - 1.0 / glm::dot(lightVector, lightVector));
+					//double omega = M_TWO_PI * (1 - cos_a_max);
+					double dotAngle = double(glm::dot(ray.direction*-1.0f, glm::normalize(lightVector)));
+					lightContribution += multiply(L * dotAngle, f) * M_ONE_OVER_PI;
 				}
 			}
+
+			// Bounced ray
+			float inclinationAngle = uniformGenerator.RandomFloat(0, float(M_PI_HALF));
+			float azimuthAngle = uniformGenerator.RandomFloat(0, float(M_TWO_PI));
+			Ray newRay = GetHemisphereRay(intersectionPoint, ray.direction, normal, inclinationAngle, azimuthAngle);
+
+			return object.emission + lightContribution + TraceRay(newRay, --traceDepth);
+		}
+		else if (object.surfaceType == SurfaceType::Specular)
+		{
+			vec3 normal = hitInfo.object->GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
+			vec3 newDirection = glm::reflect(ray.direction, normal);
+			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), --traceDepth);
 		}
 		
-		return accumulatedColor;
+		/*
+			TODO:
+				Handle refraction
+				Use roulette in return statement
+		*/
+		return ColorDbl{ 0.0f };
 	}
 
 	virtual void MoveCameraToRecommendedPosition(Camera& camera)

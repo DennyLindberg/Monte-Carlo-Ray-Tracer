@@ -7,12 +7,11 @@
 #include <iostream>
 #include <memory>
 
-void PixelBuffer::SetPixel(unsigned int pixelIndex, double r, double g, double b, double a)
+void PixelBuffer::SetPixel(unsigned int pixelIndex, double r, double g, double b)
 {
 	data[pixelIndex] = r;
 	data[pixelIndex + 1] = g;
 	data[pixelIndex + 2] = b;
-	data[pixelIndex + 3] = a;
 }
 
 void PixelBuffer::SetPixel(unsigned int pixelIndex, ColorDbl color)
@@ -20,7 +19,6 @@ void PixelBuffer::SetPixel(unsigned int pixelIndex, ColorDbl color)
 	data[pixelIndex] = color.r;
 	data[pixelIndex + 1] = color.g;
 	data[pixelIndex + 2] = color.b;
-	data[pixelIndex + 3] = color.a;
 }
 
 void PixelBuffer::AddRayColor(unsigned int pixelIndex, ColorDbl color)
@@ -28,7 +26,6 @@ void PixelBuffer::AddRayColor(unsigned int pixelIndex, ColorDbl color)
 	data[pixelIndex] += color.r;
 	data[pixelIndex + 1] += color.g;
 	data[pixelIndex + 2] += color.b;
-	data[pixelIndex + 3] += color.a;
 
 	rayCount[pixelIndex]++;
 }
@@ -40,14 +37,14 @@ uint64_t PixelBuffer::GetRayCount(unsigned int pixelIndex)
 
 unsigned int PixelBuffer::PixelArrayIndex(unsigned int x, unsigned int y)
 {
-	return y * imageWidth * imageChannelCount + x * imageChannelCount;
+	return y * imageWidth * 3 + x * 3;
 }
 
 
 ColorDbl PixelBuffer::GetPixelColor(unsigned int x, unsigned int y)
 {
 	unsigned int pixelIndex = PixelArrayIndex(x, y);
-	return ColorDbl(data[pixelIndex], data[pixelIndex+1], data[pixelIndex+2], data[pixelIndex+3]);
+	return ColorDbl(data[pixelIndex], data[pixelIndex + 1], data[pixelIndex + 2]);
 }
 
 Ray GetHemisphereRay(vec3 & origin, vec3 & incomingDirection, vec3 & surfaceNormal, float normalInclination, float azimuth)

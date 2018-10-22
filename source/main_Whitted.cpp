@@ -18,15 +18,16 @@
 
 UniformRandomGenerator uniformGenerator;
 
+bool quit = false;
+
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
-static const unsigned int SCREEN_WIDTH = 640;
-static const unsigned int SCREEN_HEIGHT = 480;
-static const unsigned int CHANNELS_PER_PIXEL = 4; // RGBA
+static const unsigned int SCREEN_WIDTH = 320;
+static const unsigned int SCREEN_HEIGHT = 240;
 
 static const bool RAY_TRACE_UNLIT = false;
 static const unsigned int RAY_TRACE_DEPTH = 3;
-static const unsigned int RAY_COUNT_PER_STEP = 1;
+static const unsigned int RAY_COUNT_PER_STEP = 16;
 
 static const float CAMERA_FOV = 90.0f;
 
@@ -69,13 +70,12 @@ void TraceRegionUnlit(unsigned int yBegin, unsigned int yEnd, Camera& camera, Sc
 	{
 		for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
 		{
-			pixelIndex = camera.pixels.PixelArrayIndex(x, y);
 			cameraRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
-
 			rayColor = scene.TraceUnlit(cameraRay);
 
+			pixelIndex = camera.pixels.PixelArrayIndex(x, y);
 			camera.pixels.SetPixel(pixelIndex, rayColor);
-			glImage.buffer.SetPixel(pixelIndex, rayColor.r, rayColor.g, rayColor.b, 1.0);
+			glImage.buffer.SetPixel(x, y, rayColor.r, rayColor.g, rayColor.b, 1.0);
 		}
 	}
 }
@@ -83,8 +83,8 @@ void TraceRegionUnlit(unsigned int yBegin, unsigned int yEnd, Camera& camera, Sc
 void TraceRegion(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
 {
 	// Pick a random pixel to trace
-	unsigned int x = unsigned int(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
-	unsigned int y = unsigned int(uniformGenerator.RandomFloat(yBegin, yEnd));
+	unsigned int x = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
+	unsigned int y = (unsigned int)(uniformGenerator.RandomFloat(float(yBegin), float(yEnd)));
 	unsigned int pixelIndex = camera.pixels.PixelArrayIndex(x, y);
 
 	// Each pixel will trace a certain number of random rays in random directions (subpixels)
@@ -108,7 +108,7 @@ void TraceRegion(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& 
 
 	// When done, normalize colors
 	ColorDbl outputColor = camera.pixels.GetPixelColor(x, y) / double(camera.pixels.GetRayCount(pixelIndex));
-	glImage.buffer.SetPixel(pixelIndex, outputColor.r, outputColor.g, outputColor.b, 1.0);
+	glImage.buffer.SetPixel(x, y, outputColor.r, outputColor.g, outputColor.b, 1.0);
 }
 
 void TraceRegionThreaded(ThreadInfo thread)
@@ -133,7 +133,7 @@ void TraceRegionThreaded(ThreadInfo thread)
 		{
 			TraceRegion(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
 		}
-	} while (thread.loop);
+	} while (thread.loop && !quit);
 }
 
 int main()
@@ -143,19 +143,19 @@ int main()
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
 	window.Clear();
 
-	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL);
-	ColorDbl backgroundColor = ColorDbl( 0.0f, 0.0f, 0.0f, 1.0f );
+	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	/*
 		Initialize scene
 	*/
 	CornellBoxScene scene{2.0f, 2.0f, 2.0f};
 	//HexagonScene scene;
-	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CHANNELS_PER_PIXEL, CAMERA_FOV};
+	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
-	scene.AddExampleLight({1.0f, 1.0f, 1.0f, 1.0f});
+	scene.AddExampleLight({1.0f, 1.0f, 1.0f});
 	scene.CacheLights();
+	scene.backgroundColor = {0.0f, 0.0f, 0.0f};
 
 	/*
 		Application loop
@@ -164,7 +164,6 @@ int main()
 
 	ApplicationClock clock;
 	float lastScreenUpdate = clock.Time();
-	bool quit = false;
 
 	if (RAY_TRACE_UNLIT)
 	{
@@ -293,7 +292,10 @@ int main()
 
 		if (USE_MULTITHREADING)
 		{
-			StopThreads(threads);
+			for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
+			{
+				threads[i].join();
+			}
 		}
 	}
 

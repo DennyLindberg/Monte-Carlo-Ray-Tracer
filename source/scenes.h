@@ -20,9 +20,9 @@ public:
 		floor = CreateObject<PolygonObject>();
 		walls = CreateObject<PolygonObject>();
 
-		ceiling->color = ColorDbl( 1.0f, 1.0f, 1.0f, 0.0f );
-		floor->color   = ColorDbl( 1.0f, 0.0f, 0.0f, 0.0f );
-		walls->color   = ColorDbl( 0.0f, 1.0f, 0.0f, 0.0f );
+		ceiling->color = ColorDbl( 1.0f, 1.0f, 1.0f );
+		floor->color   = ColorDbl( 1.0f, 0.0f, 0.0f );
+		walls->color   = ColorDbl( 0.0f, 1.0f, 0.0f );
 
 		// Ceiling corners
 		//	   {  width, height, length }
@@ -83,9 +83,9 @@ public:
 		middleSphere->position = vec3(0.0f, 0.0f, 10.0f);
 		rightSphere->position = vec3(-widthOffset, heightOffset, 10.0f);
 
-		leftSphere->color = ColorDbl(1.0f, 0.0f, 0.0f, 0.0f);
-		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 0.0f);
-		rightSphere->color = ColorDbl(0.0f, 0.0f, 1.0f, 0.0f);
+		leftSphere->color = ColorDbl(1.0f, 0.0f, 0.0f);
+		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f);
+		rightSphere->color = ColorDbl(0.0f, 0.0f, 1.0f);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
@@ -97,6 +97,7 @@ public:
 			SphereObject* pointLight = CreateObject<SphereObject>();
 			pointLight->radius = 0.0f;
 			pointLight->color = lightColor;
+			pointLight->emission = lightColor;
 			pointLight->position = roofCenter;
 		}
 		else
@@ -106,7 +107,8 @@ public:
 								{ 0.0f, -1.0f, 0.0f },	// direction
 								{ 1.0f, 0.0f, 0.0f },	// side
 								{ 2.0f, 2.0f });		// dimensions
-			light->color = ColorDbl{ 1.0f, 1.0f, 1.0f, 1.0f };
+			light->color = lightColor;
+			light->emission = lightColor;
 		}
 	}
 };
@@ -137,9 +139,9 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = ColorDbl( 1.0f, 0.0f, 0.0f, 0.0f );
-		rightWall->color	 = ColorDbl( 0.0f, 1.0f, 0.0f, 0.0f );
-		whiteSegments->color = ColorDbl( 1.0f, 1.0f, 1.0f, 0.0f );
+		leftWall->color		 = ColorDbl( 1.0f, 0.0f, 0.0f );
+		rightWall->color	 = ColorDbl( 0.0f, 1.0f, 0.0f );
+		whiteSegments->color = ColorDbl( 1.0f, 1.0f, 1.0f );
 
 		// Box corners
 		vec3 c1{ -halfWidth, halfHeight,  halfLength };
@@ -189,9 +191,9 @@ public:
 		middleSphere->position = vec3(0, 0, 0);
 		rightSphere->position  = vec3(widthOffset, heightOffset, depthOffset);
 
-		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f, 0.0f);
-		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f, 0.0f);
-		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f, 0.0f);
+		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f);
+		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f);
+		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
@@ -203,6 +205,7 @@ public:
 			SphereObject* pointLight = CreateObject<SphereObject>();
 			pointLight->radius = 0.0f;
 			pointLight->color = lightColor;
+			pointLight->emission = lightColor;
 			pointLight->position = roofCenter;
 		}
 		else
@@ -212,7 +215,8 @@ public:
 								{ 0.0f, -1.0f, 0.0f },						// direction
 								{ 1.0f, 0.0f, 0.0f },						// side
 								{ halfWidth / 2.0f, halfHeight / 2.0f });	// dimensions
-			light->color = ColorDbl{ 1.0f, 1.0f, 1.0f, 1.0f };
+			light->color = lightColor;
+			light->emission = lightColor;
 		}
 	}
 };

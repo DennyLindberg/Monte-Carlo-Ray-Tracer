@@ -45,14 +45,9 @@ void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, double r, double g,
 	SetPixel(x, y, GLubyte(r*255.0), GLubyte(g*255.0), GLubyte(b*255.0), GLubyte(a*255.0));
 }
 
-void GLImageBuffer::SetPixel(unsigned int pixelIndex, double r, double g, double b, double a)
-{
-	SetPixel(pixelIndex, GLubyte(r*255.0), GLubyte(g*255.0), GLubyte(b*255.0), GLubyte(a*255.0));
-}
-
 unsigned int GLImageBuffer::PixelArrayIndex(unsigned int x, unsigned int y)
 {
-	return y * width * channelCount + x * channelCount;
+	return y * width * 4 + x * 4;
 }
 
 void GLImageBuffer::UseForDrawing()
@@ -126,9 +121,8 @@ void GLImageBuffer::LoadPNG(std::string filename)
 
 		width = sourceWidth;
 		height = sourceHeight;
-		channelCount = lodepng_get_channels(&color);
 
-		size = width * height * channelCount;
+		size = width * height * lodepng_get_channels(&color);
 
 		UpdateParameters();
 	}
