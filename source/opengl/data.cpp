@@ -24,21 +24,35 @@ void GLImageBuffer::UpdateParameters()
 	// TODO: Can textures be uploaded as float values without driver swizzling/conversions?
 }
 
-void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a)
+inline void GLImageBuffer::SetPixel(unsigned int pixelIndex, GLubyte r, GLubyte g, GLubyte b, GLubyte a)
 {
 	// Note that the bytes are stored in BGRA order
 	// https://www.khronos.org/opengl/wiki/Pixel_Transfer
 
-	unsigned int pixelIndex = (y * width + x) * channelCount;
 	glData[pixelIndex] = b;
 	glData[pixelIndex + 1] = g;
 	glData[pixelIndex + 2] = r;
 	glData[pixelIndex + 3] = a;
 }
 
+void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a)
+{
+	SetPixel(PixelArrayIndex(x, y), r, g, b, a);
+}
+
 void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a)
 {
 	SetPixel(x, y, GLubyte(r*255.0), GLubyte(g*255.0), GLubyte(b*255.0), GLubyte(a*255.0));
+}
+
+void GLImageBuffer::SetPixel(unsigned int pixelIndex, double r, double g, double b, double a)
+{
+	SetPixel(pixelIndex, GLubyte(r*255.0), GLubyte(g*255.0), GLubyte(b*255.0), GLubyte(a*255.0));
+}
+
+unsigned int GLImageBuffer::PixelArrayIndex(unsigned int x, unsigned int y)
+{
+	return y * width * channelCount + x * channelCount;
 }
 
 void GLImageBuffer::UseForDrawing()

@@ -5,6 +5,7 @@
 #pragma once
 #include <vector>
 #include "arithmetic.h"
+#include "rand.h"
 
 #define INTERSECTION_ERROR_MARGIN FLT_EPSILON*20.0f // fulhack: This won't work for steep angles.
 
@@ -16,6 +17,7 @@ class PixelBuffer
 {
 protected:
 	std::vector<double> data;
+	std::vector<uint64_t> rayCount;
 
 	unsigned int dataSize = 0;
 	unsigned int imageWidth = 0;
@@ -32,6 +34,7 @@ public:
 	{
 		dataSize = imageWidth * imageHeight * imageChannelCount;
 		data.resize(dataSize);
+		rayCount.resize(dataSize);
 
 		dx = 2.0 / (double)imageWidth;
 		dy = 2.0 / (double)imageHeight;
@@ -51,9 +54,13 @@ public:
 	double aspectRatio() const { return aspect; }
 
 	inline double& operator[] (unsigned int i) { return data[i]; }
-	void SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a);
-	void SetPixel(unsigned int x, unsigned int y, ColorDbl color);
+	void SetPixel(unsigned int pixelIndex, double r, double g, double b, double a);
+	void SetPixel(unsigned int pixelIndex, ColorDbl color);
+	void AddRayColor(unsigned int pixelIndex, ColorDbl color);
+	uint64_t GetRayCount(unsigned int pixelIndex);
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
+
+	ColorDbl GetPixelColor(unsigned int x, unsigned int y);
 };
 
 struct Pixel
@@ -171,6 +178,8 @@ public:
 	virtual BBOX BoundingBox() = 0;
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index) = 0;
 };
+
+Ray GetHemisphereRay(vec3& origin, vec3& incomingDirection, vec3& surfaceNormal, float normalInclination, float azimuth);
 
 class Camera
 {
@@ -378,6 +387,7 @@ class Scene
 protected:
 	std::vector<SceneObject*> objects;	// TODO: std::pointer type
 	std::vector<SceneObject*> lights;	// TODO: std::pointer type
+	UniformRandomGenerator uniformGenerator;
 
 public:
 	Scene() = default;
@@ -460,7 +470,7 @@ public:
 		return ColorDbl{ 0.0f };
 	}
 
-	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5) const
+	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5)
 	{
 		float lightIntensity = 0.0f;
 		ColorDbl accumulatedColor{ 0.0f };
@@ -508,23 +518,41 @@ public:
 				break;
 			}
 
-			// Specular contribution
-			switch (object.surfaceType)
+			if (traceDepth > 0)
 			{
-			case SurfaceType::Diffuse_Specular:
-			case SurfaceType::Specular:
-				if (traceDepth > 0)
+				// Specular contribution
+				switch (object.surfaceType)
 				{
+				case SurfaceType::Diffuse_Specular:
+				case SurfaceType::Specular:
 					vec3 normal = hitInfo.object->GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
 					vec3 newDirection = glm::reflect(ray.direction, normal);
 					accumulatedColor += TraceRay(Ray(intersectionPoint, newDirection), --traceDepth);
-				}
-				break;
+					break;
 
-			case SurfaceType::Diffuse:
-			default:
-				// No reflection part
-				break;
+				case SurfaceType::Diffuse:
+				default:
+					// No reflection part
+					break;
+				}
+
+				// Indirect diffuse
+				switch (object.surfaceType)
+				{
+				case SurfaceType::Diffuse:
+				case SurfaceType::Diffuse_Specular:
+					{
+						float inclinationAngle = uniformGenerator.RandomFloat(0, float(M_PI_HALF));
+						float azimuthAngle = uniformGenerator.RandomFloat(0, float(M_TWO_PI));
+						Ray newRay = GetHemisphereRay(intersectionPoint, ray.direction, normal, inclinationAngle, azimuthAngle);
+				
+						accumulatedColor += TraceRay(newRay, --traceDepth);
+					}
+
+				case SurfaceType::Specular:
+				default:
+					break;
+				}
 			}
 		}
 		
