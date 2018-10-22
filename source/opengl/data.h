@@ -39,8 +39,13 @@ public:
 
 	inline GLubyte& operator[] (unsigned int i) { return glData[i]; }
 
+	inline void SetPixel(unsigned int pixelIndex, GLubyte r, GLubyte g, GLubyte b, GLubyte a);
 	void SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte g, GLubyte b, GLubyte a);
 	void SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a);
+
+	void SetPixel(unsigned int pixelIndex, double r, double g, double b, double a);
+
+	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 
 	void UseForDrawing();
 	void SendToGPU();

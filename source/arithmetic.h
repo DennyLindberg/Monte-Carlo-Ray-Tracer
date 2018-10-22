@@ -5,7 +5,15 @@
 
 // M_PI definition borrowed from SDL
 #ifndef M_PI
-#define M_PI    3.14159265358979323846264338327950288
+#define M_PI 3.14159265358979323846264338327950288
+#endif
+
+#ifndef M_TWO_PI
+#define M_TWO_PI 3.14159265358979323846264338327950288*2.0
+#endif
+
+#ifndef M_PI_HALF
+#define M_PI_HALF 3.14159265358979323846264338327950288/2.0
 #endif
 
 #define FLOAT_INFINITY std::numeric_limits<float>::max()

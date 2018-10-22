@@ -25,7 +25,8 @@ static const unsigned int SCREEN_HEIGHT = 480;
 static const unsigned int CHANNELS_PER_PIXEL = 4; // RGBA
 
 static const bool RAY_TRACE_UNLIT = false;
-static const unsigned int RAY_TRACE_DEPTH = 2;
+static const unsigned int RAY_TRACE_DEPTH = 3;
+static const unsigned int RAY_COUNT_PER_STEP = 1;
 
 static const float CAMERA_FOV = 90.0f;
 
@@ -59,30 +60,55 @@ void StopThreads(ThreadVector& threads)
 /*
 	Main ray tracing function
 */
-void TraceRegion(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
+void TraceRegionUnlit(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
 {
 	Ray cameraRay;
 	ColorDbl rayColor;
-
+	unsigned int pixelIndex = 0;
 	for (unsigned int y = yBegin; y < yEnd; ++y)
 	{
 		for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
 		{
+			pixelIndex = camera.pixels.PixelArrayIndex(x, y);
 			cameraRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
 
-			if constexpr (RAY_TRACE_UNLIT)
-			{
-				rayColor = scene.TraceUnlit(cameraRay);
-			}
-			else
-			{
-				rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
-			}
+			rayColor = scene.TraceUnlit(cameraRay);
 
-			camera.pixels.SetPixel(x, y, rayColor);
-			glImage.buffer.SetPixel(x, y, rayColor.r, rayColor.g, rayColor.b, 1.0);
+			camera.pixels.SetPixel(pixelIndex, rayColor);
+			glImage.buffer.SetPixel(pixelIndex, rayColor.r, rayColor.g, rayColor.b, 1.0);
 		}
 	}
+}
+
+void TraceRegion(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
+{
+	// Pick a random pixel to trace
+	unsigned int x = unsigned int(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
+	unsigned int y = unsigned int(uniformGenerator.RandomFloat(yBegin, yEnd));
+	unsigned int pixelIndex = camera.pixels.PixelArrayIndex(x, y);
+
+	// Each pixel will trace a certain number of random rays in random directions (subpixels)
+	int rayCount = RAY_COUNT_PER_STEP;
+	float sx = 0.0f;
+	float sy = 0.0f;
+
+	// Run trace for all rays
+	Ray cameraRay;
+	ColorDbl rayColor;
+	do
+	{
+		sx = uniformGenerator.RandomFloat();
+		sy = uniformGenerator.RandomFloat();
+
+		cameraRay = camera.GetPixelRay(x + sx, y + sy);
+		rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
+
+		camera.pixels.AddRayColor(pixelIndex, rayColor);
+	} while (--rayCount >= 0);
+
+	// When done, normalize colors
+	ColorDbl outputColor = camera.pixels.GetPixelColor(x, y) / double(camera.pixels.GetRayCount(pixelIndex));
+	glImage.buffer.SetPixel(pixelIndex, outputColor.r, outputColor.g, outputColor.b, 1.0);
 }
 
 void TraceRegionThreaded(ThreadInfo thread)
@@ -99,7 +125,14 @@ void TraceRegionThreaded(ThreadInfo thread)
 
 	do
 	{
-		TraceRegion(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
+		if constexpr (RAY_TRACE_UNLIT)
+		{
+			TraceRegionUnlit(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
+		}
+		else
+		{
+			TraceRegion(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
+		}
 	} while (thread.loop);
 }
 
@@ -132,87 +165,137 @@ int main()
 	ApplicationClock clock;
 	float lastScreenUpdate = clock.Time();
 	bool quit = false;
-	while (!quit)
+
+	if (RAY_TRACE_UNLIT)
 	{
-		if (!alreadyRendered)
+		while (!quit)
 		{
-			alreadyRendered = true;
-			lastScreenUpdate = clock.Time();
-
-			if (!USE_MULTITHREADING)
+			if (!alreadyRendered)
 			{
-				TraceRegion(0, SCREEN_HEIGHT, camera, scene, glImage);
-				clock.Tick();
-			}
-			else
-			{
-				// Additional threads are created from id=1 because id=0 is the main thread.
-				for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
+				if (!USE_MULTITHREADING)
 				{
-					ThreadInfo info = { i, &camera, &scene, &glImage, false };
-					threads[i] = std::thread(TraceRegionThreaded, info);
+					TraceRegion(0, SCREEN_HEIGHT, camera, scene, glImage);
+					clock.Tick();
 				}
-
-				/*
+				else
+				{
+					alreadyRendered = true;
+					lastScreenUpdate = clock.Time();
+					/*
 					Main thread has two jobs:
-						1. Render the first region
-						2. Update the screen
+					1. Render the first region
+					2. Update the screen
 
 					It will update the screen after each rendered row.
-				*/
-				unsigned int yStep = SCREEN_HEIGHT / NUM_SUPPORTED_THREADS;
-				for (unsigned int y = 1; y < yStep; y++)
-				{
-					TraceRegion(y, y + 1, camera, scene, glImage);
+					*/
 
-					clock.Tick();
-					if ((clock.Time() - lastScreenUpdate) >= SCREEN_UPDATE_DELAY)
+					// Additional threads are created from id=1 because id=0 is the main thread.
+					for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
 					{
-						window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
-						glImage.Draw();
-						window.SwapFramebuffer();
-						lastScreenUpdate = clock.Time();
+						ThreadInfo info = { i, &camera, &scene, &glImage, false };
+						threads[i] = std::thread(TraceRegionThreaded, info);
+					}
+
+					unsigned int yStep = SCREEN_HEIGHT / NUM_SUPPORTED_THREADS;
+					for (unsigned int y = 1; y < yStep; y++)
+					{
+						TraceRegion(y, y + 1, camera, scene, glImage);
+
+						clock.Tick();
+						if ((clock.Time() - lastScreenUpdate) >= SCREEN_UPDATE_DELAY)
+						{
+							window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
+							glImage.Draw();
+							window.SwapFramebuffer();
+							lastScreenUpdate = clock.Time();
+						}
+					}
+
+					// When main thread is done, wait for other threads to catch up
+					for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
+					{
+						threads[i].join();
 					}
 				}
-			
-				// When main thread is done, wait for other threads to catch up
-				for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
-				{
-					threads[i].join();
-				}
 			}
 
-			window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
-		}
+			glImage.Draw();
+			window.SwapFramebuffer();
+			lastScreenUpdate = clock.Time();
 
-		glImage.Draw();
-		window.SwapFramebuffer();
-
-		/*
-			Handle input events
-		*/
-		SDL_Event event;
-		while (SDL_PollEvent(&event))
-		{
-			if (event.type == SDL_QUIT)
+			SDL_Event event;
+			while (SDL_PollEvent(&event))
 			{
-				quit = true;
-			}
-			else if (event.type == SDL_KEYDOWN)
-			{
-				switch (event.key.keysym.sym)
+				if (event.type == SDL_QUIT)
 				{
-				case SDLK_ESCAPE:
 					quit = true;
-					break;
-				case SDLK_s:
-					TakeScreenshot("screenshot.png", SCREEN_WIDTH, SCREEN_HEIGHT);
-					break;
+				}
+				else if (event.type == SDL_KEYDOWN)
+				{
+					switch (event.key.keysym.sym)
+					{
+					case SDLK_ESCAPE:
+						quit = true;
+						break;
+					case SDLK_s:
+						TakeScreenshot("screenshot.png", SCREEN_WIDTH, SCREEN_HEIGHT);
+						break;
+					}
 				}
 			}
 		}
 	}
+	else
+	{
+		if (USE_MULTITHREADING)
+		{
+			// Additional threads are created from id=1 because id=0 is the main thread.
+			for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
+			{
+				ThreadInfo info = { i, &camera, &scene, &glImage, true };
+				threads[i] = std::thread(TraceRegionThreaded, info);
+			}
+		}
 
-	//StopThreads();
+		unsigned int mainThreadYMax = USE_MULTITHREADING ? SCREEN_HEIGHT / NUM_SUPPORTED_THREADS : SCREEN_HEIGHT;
+		while (!quit)
+		{
+			TraceRegion(0, mainThreadYMax, camera, scene, glImage);
+			clock.Tick();
+			window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
+			glImage.Draw();
+			window.SwapFramebuffer();
+
+			/*
+			Handle input events
+			*/
+			SDL_Event event;
+			while (SDL_PollEvent(&event))
+			{
+				if (event.type == SDL_QUIT)
+				{
+					quit = true;
+				}
+				else if (event.type == SDL_KEYDOWN)
+				{
+					switch (event.key.keysym.sym)
+					{
+					case SDLK_ESCAPE:
+						quit = true;
+						break;
+					case SDLK_s:
+						TakeScreenshot("screenshot.png", SCREEN_WIDTH, SCREEN_HEIGHT);
+						break;
+					}
+				}
+			}
+		}
+
+		if (USE_MULTITHREADING)
+		{
+			StopThreads(threads);
+		}
+	}
+
 	return 0;
 }
