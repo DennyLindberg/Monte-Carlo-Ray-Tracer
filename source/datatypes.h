@@ -496,7 +496,13 @@ public:
 
 		if (object.surfaceType == SurfaceType::Diffuse)
 		{
+			// Helper function for element wise multiplication
+			auto multiply = [](const ColorDbl& u, const ColorDbl& v) {
+				return ColorDbl{ u.r*v.r, u.g*v.g, u.b*v.b };
+			};
+
 			// Light on surface contribution ("Diffuse")
+			const ColorDbl& f = object.color;
 			ColorDbl lightContribution{ 0.0f };
 			for (SceneObject* lightSource : lights)
 			{
@@ -504,24 +510,17 @@ public:
 				// TODO: Pick random point on light, then store info for later use
 				if (HasClearPathToLight(intersectionPoint, lightSource))
 				{
-					auto multiply = [](const ColorDbl& u, const ColorDbl& v) { 
-						return ColorDbl{u.r*v.r, u.g*v.g, u.b*v.b};
-					};
-
 					// Lambertian or OrenNayar?
 					// TODO: Non-uniform BRDF
 					// Light -> BRDF contribution
 
 					vec3 lightVector = lightSource->position - intersectionPoint;
-					const ColorDbl& f = object.color;
 					const ColorDbl& L = lightSource->color;
 
-					//lightContribution += multiply(L, f) * M_ONE_OVER_PI;
-
-					//double cos_a_max = sqrt(1 - 1.0 / glm::dot(lightVector, lightVector));
-					//double omega = M_TWO_PI * (1 - cos_a_max);
-					double dotAngle = double(glm::dot(ray.direction*-1.0f, glm::normalize(lightVector)));
-					lightContribution += multiply(L * dotAngle, f) * M_ONE_OVER_PI;
+					double cos_a_max = sqrt(1 - 1.0 / glm::dot(lightVector, lightVector));
+					double omega = M_TWO_PI * (1 - cos_a_max);
+					double dotAngle = double(glm::dot(normal, glm::normalize(lightVector)));
+					lightContribution += multiply(L * dotAngle /**omega*/, f) * M_ONE_OVER_PI;
 				}
 			}
 
@@ -530,7 +529,7 @@ public:
 			float azimuthAngle = uniformGenerator.RandomFloat(0, float(M_TWO_PI));
 			Ray newRay = GetHemisphereRay(intersectionPoint, ray.direction, normal, inclinationAngle, azimuthAngle);
 
-			return object.emission + lightContribution + TraceRay(newRay, --traceDepth);
+			return object.emission + lightContribution + multiply(f, TraceRay(newRay, --traceDepth));
 		}
 		else if (object.surfaceType == SurfaceType::Specular)
 		{

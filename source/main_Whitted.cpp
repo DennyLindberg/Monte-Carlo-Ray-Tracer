@@ -22,12 +22,12 @@ bool quit = false;
 
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
-static const unsigned int SCREEN_WIDTH = 320;
-static const unsigned int SCREEN_HEIGHT = 240;
+static const unsigned int SCREEN_WIDTH = 640;
+static const unsigned int SCREEN_HEIGHT = 480;
 
 static const bool RAY_TRACE_UNLIT = false;
 static const unsigned int RAY_TRACE_DEPTH = 3;
-static const unsigned int RAY_COUNT_PER_STEP = 16;
+static const unsigned int RAY_COUNT_PER_STEP = 12;
 
 static const float CAMERA_FOV = 90.0f;
 
