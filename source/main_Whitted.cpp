@@ -29,9 +29,9 @@ static const float SCREEN_UPDATE_DELAY = 0.1f;
 static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
-static const bool RAY_TRACE_RANDOM = true;
-static const unsigned int RAY_TRACE_DEPTH = 4;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 8;
+static const bool RAY_TRACE_RANDOM = false;
+static const unsigned int RAY_TRACE_DEPTH = 3;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 64;
 
 static const bool USE_MULTITHREADING = true;
 typedef std::vector<std::thread> ThreadVector;
@@ -63,10 +63,17 @@ inline void TraceSubPixels(unsigned int x, unsigned int y, Camera& camera, Scene
 	ColorDbl rayColor;
 	while (--rayCount >= 0)
 	{
-		sx = uniformGenerator.RandomFloat();
-		sy = uniformGenerator.RandomFloat();
+		if constexpr(RAY_TRACE_UNLIT)
+		{
+			cameraRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
+		}
+		else
+		{
+			sx = uniformGenerator.RandomFloat();
+			sy = uniformGenerator.RandomFloat();
+			cameraRay = camera.GetPixelRay(x + sx, y + sy);
+		}
 
-		cameraRay = camera.GetPixelRay(x + sx, y + sy);
 
 		if constexpr (RAY_TRACE_UNLIT) rayColor = scene.TraceUnlit(cameraRay);
 		else						   rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);

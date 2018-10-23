@@ -80,8 +80,8 @@ public:
 		float widthOffset = 6.0f - radius;
 		float heightOffset = 5.0f - radius;
 		leftSphere->position = vec3(widthOffset, -heightOffset, 10.0f);
-		middleSphere->position = vec3(0.0f, 0.0f, 10.0f);
-		rightSphere->position = vec3(-widthOffset, heightOffset, 10.0f);
+		middleSphere->position = vec3(0.0f, -heightOffset, 8.0f);
+		rightSphere->position = vec3(-widthOffset, -heightOffset, 6.0f);
 
 		leftSphere->color = ColorDbl(1.0f, 0.0f, 0.0f);
 		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f);
@@ -90,7 +90,7 @@ public:
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
 	{
-		vec3 roofCenter{0.0f, 5.0f-0.001f, 10.0f};
+		vec3 roofCenter{0.0f, 5.0f-0.001f, 8.0f};
 
 		if (usePoint)
 		{

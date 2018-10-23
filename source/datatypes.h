@@ -157,11 +157,6 @@ struct Triangle
 	}
 };
 
-struct BBOX
-{
-	// TODO: Molly
-};
-
 class SceneObject
 {
 public:
@@ -174,7 +169,6 @@ public:
 	~SceneObject() = default;
 
 	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo) = 0;
-	virtual BBOX BoundingBox() = 0;
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index) = 0;
 };
 
@@ -269,8 +263,6 @@ public:
 		return (hitInfo.object != nullptr);
 	}
 
-	virtual BBOX BoundingBox() { return BBOX(); }	// TODO: Molly
-
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index)
 	{
 		return triangles[index].normal;
@@ -291,7 +283,6 @@ public:
 	~ImplicitObject() = default;
 
 	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo) = 0;
-	virtual BBOX BoundingBox() = 0;
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index) = 0;
 };
 
@@ -340,8 +331,6 @@ public:
 
 		return true;
 	}
-
-	virtual BBOX BoundingBox() { return BBOX(); }	// TODO: Molly
 
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index)
 	{
