@@ -71,7 +71,7 @@ public:
 
 		leftSphere->surfaceType = SurfaceType::Diffuse;
 		middleSphere->surfaceType = SurfaceType::Specular;
-		//rightSphere->surfaceType  = SurfaceType::Diffuse_Specular;
+		rightSphere->surfaceType  = SurfaceType::Diffuse;
 
 		leftSphere->radius = radius;
 		middleSphere->radius = radius;
@@ -178,7 +178,7 @@ public:
 
 		leftSphere->surfaceType   = SurfaceType::Diffuse;
 		middleSphere->surfaceType = SurfaceType::Specular;
-		//rightSphere->surfaceType  = SurfaceType::Diffuse_Specular;
+		rightSphere->surfaceType  = SurfaceType::Diffuse;
 
 		leftSphere->radius   = radius;
 		middleSphere->radius = radius;
