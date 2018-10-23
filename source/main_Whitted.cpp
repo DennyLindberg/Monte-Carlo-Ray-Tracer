@@ -29,9 +29,10 @@ static const float SCREEN_UPDATE_DELAY = 0.1f;
 static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
-static const bool RAY_TRACE_RANDOM = false;
-static const unsigned int RAY_TRACE_DEPTH = 3;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 64;
+static const bool RAY_TRACE_RANDOM = true;
+static const unsigned int RAY_TRACE_DEPTH = 5;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 4;
+static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 32;
 
 static const bool USE_MULTITHREADING = true;
 typedef std::vector<std::thread> ThreadVector;
@@ -146,6 +147,7 @@ int main()
 	scene.AddExampleLight({1.0f, 1.0f, 1.0f});
 	scene.CacheLights();
 	scene.backgroundColor = {0.0f, 0.0f, 0.0f};
+	scene.LIGHT_SAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;
 
 	/*
 		Application loop

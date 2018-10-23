@@ -47,21 +47,46 @@ ColorDbl PixelBuffer::GetPixelColor(unsigned int x, unsigned int y)
 	return ColorDbl(data[pixelIndex], data[pixelIndex + 1], data[pixelIndex + 2]);
 }
 
-Ray GetHemisphereRay(vec3 & origin, vec3 & incomingDirection, vec3 & surfaceNormal, float normalInclination, float azimuth)
+Ray RandomHemisphereRay(vec3& origin, vec3& incomingDirection, vec3& surfaceNormal, UniformRandomGenerator& gen)
 {
-	const vec3& up = surfaceNormal;
-	const vec3 side = glm::cross(up, incomingDirection);
-	const vec3 forward = glm::cross(side, up);
+	const bool useOurMethod = false;
+	if constexpr (useOurMethod)
+	{
+		float normalInclination = gen.RandomFloat(0, float(M_PI_HALF));
+		float azimuth = gen.RandomFloat(0, float(M_TWO_PI));
 
-	vec3 x = side * sin(normalInclination) * sin(azimuth);
-	vec3 y = up * cos(normalInclination);
-	vec3 z = forward * sin(normalInclination) * cos(azimuth);
+		const vec3& up = surfaceNormal;
+		const vec3 side = glm::cross(up, incomingDirection);
+		const vec3 forward = glm::cross(side, up);
 
-	// our
-	vec3 newDirection = x + y + z;
-	return Ray(origin, glm::normalize(newDirection));
+		vec3 x = side * sin(normalInclination) * sin(azimuth);
+		vec3 y = up * cos(normalInclination);
+		vec3 z = forward * sin(normalInclination) * cos(azimuth);
+
+		vec3 newDirection = x + y + z;
+		return Ray(origin, glm::normalize(newDirection));
+	}
+	else
+	{
+		vec3 Nx, Nz, Ny = surfaceNormal;
+		if (fabs(Ny.x) > fabs(Ny.y)) Nx = vec3(Ny.z, 0, -Ny.x);
+		else Nx = vec3(0, -Ny.z, Ny.y);
+		Nx = glm::normalize(Nx);
+		Nz = glm::normalize(glm::cross(Ny, Nx));
+
+		float cosTheta = gen.RandomFloat(0.0f, 1.0f);
+		float sinTheta = sqrtf(1 - cosTheta * cosTheta);
+		float phi = float(M_TWO_PI) * gen.RandomFloat(0.0f, 1.0f);
+		vec3 sample(sinTheta * cosf(phi), cosTheta, sinTheta * sinf(phi));
+		vec3 sample_transformed = vec3(
+			sample.x * Nx.x + sample.y * Ny.x + sample.z * Nz.x,
+			sample.x * Nx.y + sample.y * Ny.y + sample.z * Nz.y,
+			sample.x * Nx.z + sample.y * Ny.z + sample.z * Nz.z
+		);
+
+		return Ray(origin, sample_transformed);
+	}
 }
-
 
 
 

@@ -170,9 +170,13 @@ public:
 
 	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo) = 0;
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index) = 0;
+	virtual vec3 GetRandomPointOnSurface(UniformRandomGenerator& gen)
+	{
+		return position;
+	}
 };
 
-Ray GetHemisphereRay(vec3& origin, vec3& incomingDirection, vec3& surfaceNormal, float normalInclination, float azimuth);
+Ray RandomHemisphereRay(vec3& origin, vec3& incomingDirection, vec3& surfaceNormal, UniformRandomGenerator& gen);
 
 class Camera
 {
@@ -336,6 +340,18 @@ public:
 	{
 		return glm::normalize(location - position);
 	}
+
+	virtual vec3 GetRandomPointOnSurface(UniformRandomGenerator& gen) override
+	{
+		float u = gen.RandomFloat();
+		float v = gen.RandomFloat();
+		float theta = float(M_TWO_PI) * u;
+		float phi = acos(2.0f * v - 1.0f);
+		float x = position.x + (radius * sin(phi) * cos(theta));
+		float y = position.y + (radius * sin(phi) * sin(theta));
+		float z = position.z + (radius * cos(phi));
+		return vec3(x, y, z);
+	}
 };
 
 class LightQuad : public PolygonObject
@@ -372,6 +388,14 @@ public:
 
 		AddQuad(p1, p2, p3, p4);
 	}
+
+	virtual vec3 GetRandomPointOnSurface(UniformRandomGenerator& gen) override
+	{
+		float u = gen.RandomFloat();
+		float v = gen.RandomFloat();
+		vec3 corner = position - xVector/2.0f - yVector/2.0f;
+		return corner + xVector*u + yVector*v;
+	}
 };
 
 class Scene
@@ -383,6 +407,7 @@ protected:
 
 public:
 	ColorDbl backgroundColor = {0.0f, 0.0f, 0.0f};
+	unsigned int LIGHT_SAMPLE_COUNT = 32;
 
 	Scene() = default;
 	~Scene()
@@ -429,30 +454,6 @@ public:
 		return (hitInfo.object != nullptr);
 	}
 
-	// "Shadow Ray" function
-	bool HasClearPathToLight(vec3 shadowPoint, SceneObject* light) const
-	{
-		RayIntersectionInfo hitInfo;
-		vec3 lightDirection = glm::normalize(light->position - shadowPoint);
-        Ray shadowRay = Ray(shadowPoint, lightDirection);
-        if (!IntersectRay(shadowRay, hitInfo))
-		{
-			// There is definitely a clear path to the light
-			return true;
-		}
-		else
-		{
-			// We need to determine if the nearest intersected object is
-			// closer than the light source.
-
-			vec3 lightVector = light->position - shadowPoint;
-			float lightDistanceSq = glm::dot(lightVector, lightVector);
-			float hitDistanceSq = hitInfo.hitDistance * hitInfo.hitDistance;
-
-			return lightDistanceSq < hitDistanceSq;
-		}
-	}
-
 	ColorDbl TraceUnlit(Ray ray) const
 	{
 		RayIntersectionInfo hitInfo;
@@ -495,39 +496,33 @@ public:
 
 		if (object.surfaceType == SurfaceType::Diffuse)
 		{
-			// Light on surface contribution ("Diffuse")
-			const ColorDbl& f = object.color;
 			ColorDbl lightContribution{ 0.0f };
+			vec3 lightDirection;
+			RayIntersectionInfo hitInfo;
 			for (SceneObject* lightSource : lights)
 			{
-				// "Shadow Ray"
-				// TODO: Pick random point on light, then store info for later use
-				if (HasClearPathToLight(intersectionPoint, lightSource))
+				for (unsigned int sample = 0; sample < LIGHT_SAMPLE_COUNT; ++sample)
 				{
-					// Lambertian or OrenNayar?
-					// TODO: Non-uniform BRDF
-					// Light -> BRDF contribution
+					lightDirection = glm::normalize(lightSource->GetRandomPointOnSurface(uniformGenerator) - intersectionPoint);
 
-					vec3 lightVector = lightSource->position - intersectionPoint;
-					const ColorDbl& L = lightSource->color;
-
-					double cos_a_max = sqrt(1 - 1.0 / glm::dot(lightVector, lightVector));
-					double omega = M_TWO_PI * (1 - cos_a_max);
-					double dotAngle = double(glm::dot(normal, glm::normalize(lightVector)));
-					lightContribution += multiply(L * dotAngle /**omega*/, f) * M_ONE_OVER_PI;
+					// Shadow ray attempt (either a clear path (no collision) or the light is reached)
+					Ray shadowRay = Ray(intersectionPoint, lightDirection);
+					if (!IntersectRay(shadowRay, hitInfo) || (hitInfo.object == lightSource))
+					{
+						// Lambertian or OrenNayar?
+						// TODO: Non-uniform BRDF
+						double dotAngle = double(std::max(0.0f, glm::dot(normal, glm::normalize(lightDirection))));
+						lightContribution += multiply(object.color, lightSource->color) * dotAngle * M_ONE_OVER_PI;
+					}
 				}
+				lightContribution /= LIGHT_SAMPLE_COUNT;
 			}
 
-			// Bounced ray
-			float inclinationAngle = uniformGenerator.RandomFloat(0, float(M_PI_HALF));
-			float azimuthAngle = uniformGenerator.RandomFloat(0, float(M_TWO_PI));
-			Ray newRay = GetHemisphereRay(intersectionPoint, ray.direction, normal, inclinationAngle, azimuthAngle);
-
-			return object.emission + lightContribution + multiply(f, TraceRay(newRay, --traceDepth));
+			Ray newRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator);
+			return object.emission + lightContribution + multiply(object.color, TraceRay(newRay, --traceDepth));
 		}
 		else if (object.surfaceType == SurfaceType::Specular)
 		{
-			vec3 normal = hitInfo.object->GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
 			vec3 newDirection = glm::reflect(ray.direction, normal);
 			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), --traceDepth);
 		}
