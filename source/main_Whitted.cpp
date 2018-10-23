@@ -31,7 +31,7 @@ static const float CAMERA_FOV = 90.0f;
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
 static const unsigned int RAY_TRACE_DEPTH = 5;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 10;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 8;
 
 static const bool USE_MULTITHREADING = true;
 typedef std::vector<std::thread> ThreadVector;
@@ -123,6 +123,8 @@ int main()
 	OpenGLWindow window("OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
 	window.Clear();
+    window.SwapFramebuffer();
+    window.Clear();
 
 	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT);
 
