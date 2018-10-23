@@ -131,8 +131,8 @@ int main()
 	/*
 		Initialize scene
 	*/
-	CornellBoxScene scene{2.0f, 2.0f, 2.0f};
-	//HexagonScene scene;
+	//CornellBoxScene scene{2.0f, 2.0f, 2.0f};
+	HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();

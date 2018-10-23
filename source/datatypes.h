@@ -77,7 +77,6 @@ struct Pixel
 
 struct Ray
 {
-	ColorDbl color;
 	vec3 origin;
 	vec3 direction;
 
