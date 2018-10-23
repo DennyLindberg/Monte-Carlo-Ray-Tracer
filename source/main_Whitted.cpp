@@ -30,7 +30,7 @@ static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
-static const unsigned int RAY_TRACE_DEPTH = 5;
+static const unsigned int RAY_TRACE_DEPTH = 3;
 static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 4;
 static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 32;
 

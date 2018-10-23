@@ -70,7 +70,7 @@ public:
 		SphereObject* rightSphere = CreateObject<SphereObject>();
 
 		leftSphere->surfaceType = SurfaceType::Diffuse;
-		middleSphere->surfaceType = SurfaceType::Specular;
+		middleSphere->surfaceType = SurfaceType::Refractive;
 		rightSphere->surfaceType  = SurfaceType::Diffuse;
 
 		leftSphere->radius = radius;

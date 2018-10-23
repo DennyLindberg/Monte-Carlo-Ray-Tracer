@@ -465,6 +465,50 @@ public:
 		return ColorDbl{ 0.0f };
 	}
 
+	vec3 refract(const vec3 &I, const vec3 &N, const float &ior)
+	{
+		// https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
+		float cosi = std::clamp(glm::dot(I, N), -1.0f, 1.0f);
+		float etai = 1.0f, etat = ior;
+		vec3 n = N;
+		if (cosi < 0.0f) { cosi = -cosi; }
+		else { std::swap(etai, etat); n = -N; }
+		float eta = etai / etat;
+		float k = 1.0f - eta * eta * (1.0f - cosi * cosi);
+
+		if (k < 0.0f)
+		{
+			return vec3(0.0f);
+		}
+		else
+		{
+			return eta * I + (eta * cosi - sqrtf(k)) * n;
+		}
+	}
+
+	void fresnel(const vec3 &I, const vec3 &N, const float &ior, float &kr)
+	{
+		// https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
+		float cosi = std::clamp(glm::dot(I, N), -1.0f, 1.0f);
+		float etai = 1.0f, etat = ior;
+		if (cosi > 0) { std::swap(etai, etat); }
+		// Compute sini using Snell's law
+		float sint = etai / etat * sqrtf(std::max(0.f, 1 - cosi * cosi));
+		// Total internal reflection
+		if (sint >= 1) {
+			kr = 1;
+		}
+		else {
+			float cost = sqrtf(std::max(0.f, 1 - sint * sint));
+			cosi = fabsf(cosi);
+			float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+			float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
+			kr = (Rs * Rs + Rp * Rp) / 2;
+		}
+		// As a consequence of the conservation of energy, transmittance is given by:
+		// kt = 1 - kr;
+	}
+
 	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5)
 	{
 		/*
@@ -487,7 +531,6 @@ public:
 		SceneObject& object = *hitInfo.object;
 		vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
 		vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
-		intersectionPoint += normal*INTERSECTION_ERROR_MARGIN;
 
 		// Helper function for element wise multiplication
 		auto multiply = [](const ColorDbl& u, const ColorDbl& v) {
@@ -496,6 +539,8 @@ public:
 
 		if (object.surfaceType == SurfaceType::Diffuse)
 		{
+			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
+
 			ColorDbl lightContribution{ 0.0f };
 			vec3 lightDirection;
 			RayIntersectionInfo hitInfo;
@@ -523,65 +568,38 @@ public:
 		}
 		else if (object.surfaceType == SurfaceType::Specular)
 		{
+			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
+
 			vec3 newDirection = glm::reflect(ray.direction, normal);
 			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), --traceDepth);
 		}
 		else if (object.surfaceType == SurfaceType::Refractive)
 		{
-			/*
-				This code is currently broken and behaves like some weird mirror with miscoloring.
-				TODO: Make it actually refractive
-			*/
+			// https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
+			vec3 refractionColor{ 0.0f };
+			vec3 reflectionColor{ 0.0f };
 
-			// Perfect reflection
-			vec3 I = ray.direction*-1.0f;
-			vec3 normal = hitInfo.object->GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
+			// compute fresnel
+			float n2 = 1.52f;
+			float kr;
+			fresnel(ray.direction, intersectionPoint, n2, kr);
 
-			float Nair = 1.0f;
-			float Nobject = 1.52f; // window glass
+			bool outside = glm::dot(ray.direction, normal) < 0.0f;
+			vec3 bias = 1.0f * normal;
 
-			bool intoObject = glm::dot(ray.direction, normal) > 0.0f;
-			float Nr = intoObject? Nair / Nobject : Nobject / Nair;
-			vec3 N = intoObject ? normal : normal * -1.0f;
-
-			// https://www.cs.rpi.edu/~cutler/classes/advancedgraphics/F05/lectures/13_ray_tracing.pdf
-			// [Nr * cos(w) - sqrt(1-Nr^2*(1-cos(w)^2)]*N - Nr * I
-			float NrCos = Nr * glm::dot(N, I);
-			float innerRoot = 1 - Nr*Nr*(1 - NrCos * NrCos);
-
-			const ColorDbl& f = object.color;
-			vec3 reflectDirection = glm::reflect(ray.direction, N);
-			Ray reflection{ intersectionPoint, reflectDirection };
-			if (innerRoot < 0.0f)
-			{
-				// Total internal reflection
-				return object.emission + multiply(f, TraceRay(reflection, --traceDepth));
+			// compute refraction if it is not a case of total internal reflection
+			if (kr < 1.0f) {
+				vec3 refractionDirection = glm::normalize(refract(ray.direction, normal, n2));
+				vec3 refractionRayOrig = outside ? intersectionPoint - bias : intersectionPoint + bias;
+				refractionColor = TraceRay(Ray(refractionRayOrig, refractionDirection), traceDepth-1);
 			}
-			else
-			{
-				vec3 T = (NrCos - sqrt(innerRoot)) * N - Nr * I;
-				Ray refraction{ intersectionPoint, glm::normalize(T) };
-				return TraceRay(refraction, --traceDepth);
 
-				// Approximate Fresnel in specular reflection
-				// https://en.wikipedia.org/wiki/Schlick%27s_approximation
-				
-				// FRESNELL / SCHLICK
-				float w = glm::dot(I, N);
-				float c = 1 - w;
-				
-				float R0; // Reflection coefficient ((n1 - n2)/(n1 + n2))^2
-				if (intoObject) R0 = ((Nair - Nobject) / (Nair + Nobject));
-				else			R0 = ((Nobject - Nair) / (Nair + Nobject));
-				R0 *= R0;
+			vec3 reflectionDirection = glm::reflect(ray.direction, normal);
+			vec3 reflectionRayOrig = outside ? intersectionPoint + bias : intersectionPoint - bias;
+			reflectionColor = TraceRay(Ray(reflectionRayOrig, reflectionDirection), --traceDepth);
 
-				// R(w) = R0 + (1 - R0)(1-cos(w))^5
-				double R = double(R0 + (1 - R0)*c*c*c*c*c);
-				double Tr = 1.0f-R;
-				
-				traceDepth--;
-				return TraceRay(refraction, traceDepth) * R;// + TraceRay(reflection, traceDepth) * Tr;
-			}
+			// mix the two
+			return reflectionColor * kr + refractionColor * (1 - kr);
 		}
 
 		// Failed to get a color, return black
