@@ -29,9 +29,9 @@ static const float SCREEN_UPDATE_DELAY = 0.1f;
 static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
-static const bool RAY_TRACE_RANDOM = true;
-static const unsigned int RAY_TRACE_DEPTH = 3;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 4;
+static const bool RAY_TRACE_RANDOM = false;
+static const unsigned int RAY_TRACE_DEPTH = 5;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 32;
 static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 32;
 
 static const bool USE_MULTITHREADING = true;
@@ -46,7 +46,9 @@ struct ThreadInfo
 	Scene* scene = nullptr;
 	GLFullscreenImage* glImage = nullptr;
 	bool loop = false;
+	bool isDone = false;
 };
+std::vector<ThreadInfo> threadInfos(NUM_SUPPORTED_THREADS);
 
 /*
 	Main ray tracing function
@@ -108,7 +110,7 @@ inline void Trace(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene&
 	}
 }
 
-void TraceThreaded(ThreadInfo thread)
+void TraceThreaded(ThreadInfo& thread)
 {
 	unsigned int yStep = SCREEN_HEIGHT / NUM_SUPPORTED_THREADS;
 
@@ -124,6 +126,21 @@ void TraceThreaded(ThreadInfo thread)
 	{
 		Trace(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
 	} while (thread.loop && !quit);
+
+	thread.isDone = true;
+}
+
+bool ThreadsAreDone(std::vector<ThreadInfo>& threads)
+{
+	// Don't include the main thread
+	for (unsigned int i=1; i<threads.size(); i++)
+	{
+		if (!threads[i].isDone)
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 int main()
@@ -139,8 +156,8 @@ int main()
 	/*
 		Initialize scene
 	*/
-	//CornellBoxScene scene{2.0f, 2.0f, 2.0f};
-	HexagonScene scene;
+	CornellBoxScene scene{2.0f, 2.0f, 2.0f};
+	//HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
@@ -156,32 +173,52 @@ int main()
 	float lastScreenUpdate = clock.Time();
 	if (USE_MULTITHREADING)
 	{
-		// Additional threads are created from id=1 because id=0 is the main thread.
-		for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
+		for (unsigned int i = 0; i < NUM_SUPPORTED_THREADS; i++)
 		{
-			ThreadInfo info = { i, &camera, &scene, &glImage, RAY_TRACE_RANDOM };
-			threads[i] = std::thread(TraceThreaded, info);
+			threadInfos[i] = { i, &camera, &scene, &glImage, RAY_TRACE_RANDOM, false };
+
+			// Additional threads are created from id=1 because id=0 is the main thread.
+			if (i > 0)
+			{
+				threads[i] = std::thread(TraceThreaded, threadInfos[i]);
+			}
 		}
 	}
 
 	unsigned int y = 0;
 	unsigned int mainThreadYMax = USE_MULTITHREADING ? SCREEN_HEIGHT / NUM_SUPPORTED_THREADS : SCREEN_HEIGHT;
+	bool mainThreadTracing = false;
 	while (!quit)
 	{
 		if constexpr (RAY_TRACE_RANDOM)
 		{
 			Trace(0, mainThreadYMax, camera, scene, glImage);
 		}
-		else if (y < mainThreadYMax)
+		else 
 		{
-			Trace(y, y + 1, camera, scene, glImage);
-			y++;
+			mainThreadTracing = y < mainThreadYMax;
+			if (mainThreadTracing)
+			{
+				Trace(y, y + 1, camera, scene, glImage);
+				y++;
+			}
 		}
 
 		clock.Tick();
 		if ((clock.Time() - lastScreenUpdate) >= SCREEN_UPDATE_DELAY)
 		{
-			window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
+			if constexpr (!RAY_TRACE_RANDOM)
+			{
+				if (mainThreadTracing && !ThreadsAreDone(threadInfos))
+				{
+					window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
+				}
+			}
+			else
+			{
+				window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
+			}
+
 			glImage.Draw();
 			window.SwapFramebuffer();
 			lastScreenUpdate = clock.Time();

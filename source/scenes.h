@@ -167,7 +167,7 @@ public:
 
 	virtual void MoveCameraToRecommendedPosition(Camera& camera)
 	{
-		camera.SetView(vec3(0.0f, 0.0f, 2.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+		camera.SetView(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 	}
 
 	void AddExampleSpheres(float radius = 0.25f)
