@@ -406,13 +406,11 @@ class Scene
 protected:
 	std::vector<SceneObject*> objects;	// TODO: std::pointer type
 	std::vector<SceneObject*> lights;	// TODO: std::pointer type
-	UniformRandomGenerator uniformGenerator;
 
 public:
 	ColorDbl backgroundColor = {0.0f, 0.0f, 0.0f};
 	unsigned int LIGHT_SAMPLE_COUNT = 32;
 
-	Scene() = default;
 	~Scene()
 	{
 		for (SceneObject* o : objects) delete o;
@@ -518,7 +516,7 @@ public:
 		return ColorDbl{ u.r*v.r, u.g*v.g, u.b*v.b };
 	}
 
-	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5)
+	ColorDbl TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsigned int traceDepth = 5)
 	{
 		/*
 			Lecture 11 - "We should not stop the ray after a fixed number of iterations. Terminate on light sources or lambertian/ON reflectors."
@@ -572,7 +570,7 @@ public:
 
 			// Indirect lighting
 			Ray newRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, dotAngle);
-			ColorDbl indirectLight = TraceRay(newRay, --traceDepth);
+			ColorDbl indirectLight = TraceRay(newRay, uniformGenerator, --traceDepth);
 
 			// Return all light contribution
 			double pdf = M_ONE_OVER_TWO_PI; // 1.0 / M_TWO_PI;
@@ -583,7 +581,7 @@ public:
 			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
 			vec3 newDirection = glm::reflect(ray.direction, normal);
-			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), --traceDepth);
+			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth);
 		}
 		else if (object.surfaceType == SurfaceType::Refractive)
 		{
@@ -603,12 +601,12 @@ public:
 			if (kr < 1.0f) {
 				vec3 refractionDirection = glm::normalize(refract(ray.direction, normal, n2));
 				vec3 refractionRayOrig = outside ? intersectionPoint - bias : intersectionPoint + bias;
-				refractionColor = TraceRay(Ray(refractionRayOrig, refractionDirection), traceDepth-1);
+				refractionColor = TraceRay(Ray(refractionRayOrig, refractionDirection), uniformGenerator, traceDepth-1);
 			}
 
 			vec3 reflectionDirection = glm::reflect(ray.direction, normal);
 			vec3 reflectionRayOrig = outside ? intersectionPoint + bias : intersectionPoint - bias;
-			reflectionColor = TraceRay(Ray(reflectionRayOrig, reflectionDirection), --traceDepth);
+			reflectionColor = TraceRay(Ray(reflectionRayOrig, reflectionDirection), uniformGenerator, --traceDepth);
 
 			// mix the two
 			return reflectionColor * kr + refractionColor * (1 - kr);

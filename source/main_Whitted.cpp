@@ -32,7 +32,7 @@ static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
 static const unsigned int RAY_TRACE_DEPTH = 5;
 static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
-static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 4;
+static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
 
 static const bool APPLY_TONE_MAPPING = true;
 static const bool USE_SIMPLE_TONE_MAPPER = true;
@@ -54,11 +54,12 @@ struct ThreadInfo
 	bool isDone = false;
 };
 std::vector<ThreadInfo> threadInfos(NUM_SUPPORTED_THREADS);
+std::vector<UniformRandomGenerator> uniformGenerators(NUM_SUPPORTED_THREADS);
 
 /*
 	Main ray tracing function
 */
-inline void TraceSubPixels(unsigned int x, unsigned int y, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
+inline void TraceSubPixels(unsigned int threadId, unsigned int x, unsigned int y, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
 {
 	// Each pixel will trace a certain number of random rays in random directions (subpixels)
 	unsigned int pixelIndex = camera.pixels.PixelArrayIndex(x, y);
@@ -84,7 +85,7 @@ inline void TraceSubPixels(unsigned int x, unsigned int y, Camera& camera, Scene
 
 
 		if constexpr (RAY_TRACE_UNLIT) rayColor = scene.TraceUnlit(cameraRay);
-		else						   rayColor = scene.TraceRay(cameraRay, RAY_TRACE_DEPTH);
+		else						   rayColor = scene.TraceRay(cameraRay, uniformGenerators[threadId], RAY_TRACE_DEPTH);
 		
 		camera.pixels.AddRayColor(pixelIndex, rayColor);
 	}
@@ -116,14 +117,14 @@ inline void TraceSubPixels(unsigned int x, unsigned int y, Camera& camera, Scene
 
 }
 
-inline void Trace(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
+inline void Trace(unsigned int threadId, unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
 {
 	if constexpr (RAY_TRACE_RANDOM)
 	{
 
 		unsigned int x = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
 		unsigned int y = (unsigned int)(uniformGenerator.RandomFloat(float(yBegin), float(yEnd)));
-		TraceSubPixels(x, y, camera, scene, glImage);
+		TraceSubPixels(threadId, x, y, camera, scene, glImage);
 	}
 	else
 	{
@@ -131,7 +132,7 @@ inline void Trace(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene&
 		{
 			for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
 			{
-				TraceSubPixels(x, y, camera, scene, glImage);
+				TraceSubPixels(threadId, x, y, camera, scene, glImage);
 			}
 		}
 	}
@@ -151,7 +152,7 @@ void TraceThreaded(ThreadInfo& thread)
 
 	do
 	{
-		Trace(yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
+		Trace(thread.id, yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
 	} while (thread.loop && !quit);
 
 	thread.isDone = true;
@@ -183,12 +184,12 @@ int main()
 	/*
 		Initialize scene
 	*/
-	//CornellBoxScene scene{2.0f, 2.0f, 2.0f};
-	HexagonScene scene;
+	CornellBoxScene scene{2.0f, 2.0f, 2.0f};
+	//HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
-	scene.AddExampleLight(ColorDbl{1.0f});
+	scene.AddExampleLight(ColorDbl{3.0f});
 	scene.CacheLights();
 	scene.backgroundColor = {0.0f, 0.0f, 0.0f};
 	scene.LIGHT_SAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;
@@ -219,14 +220,14 @@ int main()
 	{
 		if constexpr (RAY_TRACE_RANDOM)
 		{
-			Trace(0, mainThreadYMax, camera, scene, glImage);
+			Trace(0, 0, mainThreadYMax, camera, scene, glImage);
 		}
 		else 
 		{
 			mainThreadTracing = y < mainThreadYMax;
 			if (mainThreadTracing)
 			{
-				Trace(y, y + 1, camera, scene, glImage);
+				Trace(0, y, y + 1, camera, scene, glImage);
 				y++;
 			}
 		}
