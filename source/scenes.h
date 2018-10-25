@@ -112,7 +112,7 @@ public:
 			light->SetGeometry(roofCenter,				// position
 								{ 0.0f, -1.0f, 0.0f },	// direction
 								{ 1.0f, 0.0f, 0.0f },	// side
-								{ 2.0f, 2.0f });		// dimensions
+								{ 1.0f, 1.0f });		// dimensions
 			light->color = lightColor;
 			light->emission = lightColor;
 		}
@@ -145,9 +145,9 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = ColorDbl( 0.2, 0.0, 0.0 );
-		rightWall->color	 = ColorDbl( 0.0, 0.2, 0.0 );
-		whiteSegments->color = ColorDbl( 0.2 );
+		leftWall->color		 = ColorDbl( 0.1, 0.0, 0.0 );
+		rightWall->color	 = ColorDbl( 0.0, 0.1, 0.0 );
+		whiteSegments->color = ColorDbl( 0.3 );
 
 		// Box corners
 		vec3 c1{ -halfWidth, halfHeight,  halfLength };
@@ -176,7 +176,7 @@ public:
 		camera.SetView(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 	}
 
-	void AddExampleSpheres(float radius = 0.25f)
+	void AddExampleSpheres(float radius = 0.3f)
 	{
 		SphereObject* leftSphere   = CreateObject<SphereObject>();
 		SphereObject* middleSphere = CreateObject<SphereObject>();
@@ -197,9 +197,9 @@ public:
 		middleSphere->position = vec3(0, 0, 0);
 		rightSphere->position  = vec3(widthOffset, heightOffset, depthOffset);
 
-		leftSphere->color   = ColorDbl(0.6f, 0.0f, 0.0f);
-		middleSphere->color = ColorDbl(0.0f, 0.6f, 0.0f);
-		rightSphere->color  = ColorDbl(0.0f, 0.0f, 0.6f);
+		leftSphere->color   = ColorDbl(0.4f, 0.0f, 0.0f);
+		middleSphere->color = ColorDbl(0.0f, 0.4f, 0.0f);
+		rightSphere->color  = ColorDbl(0.0f, 0.0f, 0.4f);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
@@ -220,7 +220,7 @@ public:
 			light->SetGeometry( roofCenter,									// position
 								{ 0.0f, -1.0f, 0.0f },						// direction
 								{ 1.0f, 0.0f, 0.0f },						// side
-								{ halfWidth / 2.0f, halfHeight / 2.0f });	// dimensions
+								{ halfWidth / 3.0f, halfHeight / 3.0f });	// dimensions
 			light->color = lightColor;
 			light->emission = lightColor;
 		}

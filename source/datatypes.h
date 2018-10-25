@@ -164,6 +164,7 @@ public:
 	ColorDbl color = ColorDbl{ 1.0f, 1.0f, 1.0f };
 	ColorDbl emission = ColorDbl{ 0.0f, 0.0f, 0.0f };
 	SurfaceType surfaceType = SurfaceType::Diffuse;
+	float area = 1.0f;
 
 	SceneObject() = default;
 	~SceneObject() = default;
@@ -370,6 +371,8 @@ public:
 
 	void SetGeometry(vec3 centerPosition, vec3 lightDirection, vec3 sideDirection, vec2 quadDimensions)
 	{
+		area = quadDimensions.x * quadDimensions.y;
+
 		normal = glm::normalize(lightDirection);
 		position = centerPosition;
 
@@ -546,14 +549,14 @@ public:
 			ColorDbl directLight{ 0.0f };
 			vec3 lightDirection;
 			RayIntersectionInfo hitInfo;
-			double distanceSq = 0.0;
+			float distanceSq = 0.0;
 			float dotAngle = 0.0f;
 			for (SceneObject* lightSource : lights)
 			{
 				for (unsigned int sample = 0; sample < LIGHT_SAMPLE_COUNT; ++sample)
 				{
 					lightDirection = lightSource->GetRandomPointOnSurface(uniformGenerator) - intersectionPoint;
-					//distanceSq = std::max(1.0, double(glm::dot(lightDirection, lightDirection)));
+					distanceSq = std::max(1.0f, glm::dot(lightDirection, lightDirection));
 					lightDirection = glm::normalize(lightDirection);
 
 					// Shadow ray attempt (either a clear path (no collision) or the light is reached)
@@ -561,7 +564,7 @@ public:
 					if (!IntersectRay(shadowRay, hitInfo) || (hitInfo.object == lightSource))
 					{
 						dotAngle = std::max(0.0f, glm::dot(normal, lightDirection));
-						directLight += lightSource->emission /* * distanceSq*/ *  double(dotAngle);
+						directLight += lightSource->emission * double(lightSource->area * dotAngle / distanceSq);
 					}
 				}
 			}
@@ -569,7 +572,7 @@ public:
 
 			// Indirect lighting
 			Ray newRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, dotAngle);
-			ColorDbl indirectLight = TraceRay(newRay, --traceDepth) * double(dotAngle);
+			ColorDbl indirectLight = TraceRay(newRay, --traceDepth);
 
 			// Return all light contribution
 			double pdf = M_ONE_OVER_TWO_PI; // 1.0 / M_TWO_PI;

@@ -32,7 +32,7 @@ static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
 static const unsigned int RAY_TRACE_DEPTH = 5;
 static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
-static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
+static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 4;
 
 static const bool APPLY_TONE_MAPPING = true;
 static const bool USE_SIMPLE_TONE_MAPPER = true;
