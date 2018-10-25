@@ -56,7 +56,6 @@ public:
 	void SetPixel(unsigned int pixelIndex, double r, double g, double b);
 	void SetPixel(unsigned int pixelIndex, ColorDbl color);
 	void AddRayColor(unsigned int pixelIndex, ColorDbl color);
-	void AddRayCount(unsigned int pixelIndex, unsigned int count);
 	uint64_t GetRayCount(unsigned int pixelIndex);
 	unsigned int PixelArrayIndex(unsigned int x, unsigned int y);
 
@@ -510,6 +509,12 @@ public:
 		// kt = 1 - kr;
 	}
 
+	// element wise multiplication
+	inline ColorDbl multiply(const ColorDbl& u, const ColorDbl& v) 
+	{
+		return ColorDbl{ u.r*v.r, u.g*v.g, u.b*v.b };
+	}
+
 	ColorDbl TraceRay(Ray ray, unsigned int traceDepth = 5)
 	{
 		/*
@@ -533,11 +538,7 @@ public:
 		vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
 		vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
 
-		// Helper function for element wise multiplication
-		auto multiply = [](const ColorDbl& u, const ColorDbl& v) {
-			return ColorDbl{ u.r*v.r, u.g*v.g, u.b*v.b };
-		};
-
+		// Lambertian diffuse reflector
 		if (object.surfaceType == SurfaceType::Diffuse)
 		{
 			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
@@ -551,17 +552,15 @@ public:
 				for (unsigned int sample = 0; sample < LIGHT_SAMPLE_COUNT; ++sample)
 				{
 					lightDirection = lightSource->GetRandomPointOnSurface(uniformGenerator) - intersectionPoint;
-					distanceSq = std::max(1.0, double(glm::dot(lightDirection, lightDirection)));
+					//distanceSq = std::max(1.0, double(glm::dot(lightDirection, lightDirection)));
 					lightDirection = glm::normalize(lightDirection);
 
 					// Shadow ray attempt (either a clear path (no collision) or the light is reached)
 					Ray shadowRay = Ray(intersectionPoint, lightDirection);
 					if (!IntersectRay(shadowRay, hitInfo) || (hitInfo.object == lightSource))
 					{
-						// Lambertian or OrenNayar?
-						// TODO: Non-uniform BRDF
 						double dotAngle = double(std::max(0.0f, glm::dot(normal, lightDirection)));
-						directLight += lightSource->emission / distanceSq * dotAngle;
+						directLight += lightSource->emission /* * distanceSq*/ * dotAngle;
 					}
 				}
 			}
@@ -570,10 +569,10 @@ public:
 			// Indirect lighting
 			Ray newRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator);
 			double dotAngle = double(std::max(0.0f, glm::dot(normal, newRay.direction)));
-			double pdf = 1.0 / M_TWO_PI;
 			ColorDbl indirectLight = TraceRay(newRay, --traceDepth) * dotAngle;
 
 			// Return all light contribution
+			double pdf = M_ONE_OVER_TWO_PI; // 1.0 / M_TWO_PI;
 			return object.emission + multiply(object.color, directLight / M_PI + 2.0 * indirectLight / pdf);
 		}
 		else if (object.surfaceType == SurfaceType::Specular)

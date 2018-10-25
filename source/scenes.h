@@ -11,18 +11,24 @@ class HexagonScene : public Scene
 protected:
 	PolygonObject* ceiling;
 	PolygonObject* floor;
-	PolygonObject* walls;
+	PolygonObject* walls1;
+	PolygonObject* walls2;
+	PolygonObject* walls3;
 
 public:
 	HexagonScene()
 	{
 		ceiling = CreateObject<PolygonObject>();
 		floor = CreateObject<PolygonObject>();
-		walls = CreateObject<PolygonObject>();
+		walls1 = CreateObject<PolygonObject>();
+		walls2 = CreateObject<PolygonObject>();
+		walls3 = CreateObject<PolygonObject>();
 
-		ceiling->color = ColorDbl( 1.0f, 1.0f, 1.0f );
-		floor->color   = ColorDbl( 1.0f, 0.0f, 0.0f );
-		walls->color   = ColorDbl( 0.0f, 1.0f, 0.0f );
+		ceiling->color = ColorDbl( 0.2 );
+		floor->color   = ColorDbl( 0.2 );
+		walls1->color = ColorDbl(0.0, 0.1, 0.0);
+		walls2->color = ColorDbl(0.1, 0.0, 0.0);
+		walls3->color = ColorDbl(0.05, 0.0, 0.025);
 
 		// Ceiling corners
 		//	   {  width, height, length }
@@ -47,13 +53,13 @@ public:
 		ceiling->AddQuad(c1, c2, c3, c4);
 		ceiling->AddQuad(c4, c5, c6, c1);
 
-		walls->AddQuad(f1, f2, c2, c1);
-		walls->AddQuad(f2, f3, c3, c2);
-		walls->AddQuad(f3, f4, c4, c3);
+		walls1->AddQuad(f2, f3, c3, c2);
+		walls2->AddQuad(f1, f2, c2, c1);
+		walls3->AddQuad(f3, f4, c4, c3);
 		
-		walls->AddQuad(f4, f5, c5, c4);
-		walls->AddQuad(f5, f6, c6, c5);
-		walls->AddQuad(f6, f1, c1, c6);
+		walls2->AddQuad(f5, f6, c6, c5);
+		walls3->AddQuad(f4, f5, c5, c4);
+		walls3->AddQuad(f6, f1, c1, c6);
 	}
 
 	~HexagonScene() = default;
@@ -70,7 +76,7 @@ public:
 		SphereObject* rightSphere = CreateObject<SphereObject>();
 
 		leftSphere->surfaceType = SurfaceType::Diffuse;
-		middleSphere->surfaceType = SurfaceType::Refractive;
+		middleSphere->surfaceType = SurfaceType::Specular;
 		rightSphere->surfaceType  = SurfaceType::Diffuse;
 
 		leftSphere->radius = radius;
@@ -83,9 +89,9 @@ public:
 		middleSphere->position = vec3(0.0f, -heightOffset, 8.0f);
 		rightSphere->position = vec3(-widthOffset, -heightOffset, 6.0f);
 
-		leftSphere->color = ColorDbl(1.0f, 0.0f, 0.0f);
-		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f);
-		rightSphere->color = ColorDbl(0.0f, 0.0f, 1.0f);
+		leftSphere->color = ColorDbl(0.5f, 0.0f, 0.0f);
+		middleSphere->color = ColorDbl(0.0f, 0.5f, 0.0f);
+		rightSphere->color = ColorDbl(0.0f, 0.0f, 0.5f);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
@@ -139,9 +145,9 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = ColorDbl( 1.0f, 0.0f, 0.0f );
-		rightWall->color	 = ColorDbl( 0.0f, 1.0f, 0.0f );
-		whiteSegments->color = ColorDbl( 1.0f, 1.0f, 1.0f );
+		leftWall->color		 = ColorDbl( 0.2, 0.0, 0.0 );
+		rightWall->color	 = ColorDbl( 0.0, 0.2, 0.0 );
+		whiteSegments->color = ColorDbl( 0.2 );
 
 		// Box corners
 		vec3 c1{ -halfWidth, halfHeight,  halfLength };
@@ -191,9 +197,9 @@ public:
 		middleSphere->position = vec3(0, 0, 0);
 		rightSphere->position  = vec3(widthOffset, heightOffset, depthOffset);
 
-		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f);
-		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f);
-		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f);
+		leftSphere->color   = ColorDbl(0.6f, 0.0f, 0.0f);
+		middleSphere->color = ColorDbl(0.0f, 0.6f, 0.0f);
+		rightSphere->color  = ColorDbl(0.0f, 0.0f, 0.6f);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)

@@ -30,9 +30,14 @@ static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
-static const unsigned int RAY_TRACE_DEPTH = 3;
+static const unsigned int RAY_TRACE_DEPTH = 5;
 static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
 static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
+
+static const bool APPLY_TONE_MAPPING = true;
+static const bool USE_SIMPLE_TONE_MAPPER = true;
+static const double TONE_MAP_GAMMA = 2.2;
+static const double TONE_MAP_EXPOSURE = 1.0;
 
 static const bool USE_MULTITHREADING = true;
 typedef std::vector<std::thread> ThreadVector;
@@ -83,28 +88,32 @@ inline void TraceSubPixels(unsigned int x, unsigned int y, Camera& camera, Scene
 		
 		camera.pixels.AddRayColor(pixelIndex, rayColor);
 	}
-	camera.pixels.AddRayCount(pixelIndex, RAY_COUNT_PER_PIXEL);
 
 	// When done, normalize colors
 	ColorDbl outputColor = camera.pixels.GetPixelColor(x, y) / double(camera.pixels.GetRayCount(pixelIndex));
-	
-	vec3 mapped;
-	double gamma = 1.0;
-	if constexpr(true)
+
+	if constexpr(!APPLY_TONE_MAPPING)
 	{
-		// Reinhard Tone Mapping
-		mapped = outputColor / (outputColor + ColorDbl(2.0));
-		mapped = pow(mapped, vec3(1.0 / gamma));
+		glImage.buffer.SetPixel(x, y, outputColor.r, outputColor.g, outputColor.b, 1.0);
 	}
 	else
 	{
-		// Exposure tone mapping
-		double exposure = 0.5;
-		mapped = ColorDbl(1.0) - glm::exp(-outputColor * exposure);
-		mapped = pow(mapped, vec3(1.0 / gamma));
-	}
+		if constexpr(USE_SIMPLE_TONE_MAPPER)
+		{
+			// Reinhard Tone Mapping
+			outputColor = outputColor / (outputColor + ColorDbl(1.0));
+			outputColor = pow(outputColor, ColorDbl(1.0 / TONE_MAP_GAMMA));
+		}
+		else
+		{
+			// Exposure tone mapping
+			outputColor = ColorDbl(1.0) - glm::exp(-outputColor * TONE_MAP_EXPOSURE);
+			outputColor = pow(outputColor, ColorDbl(1.0 / TONE_MAP_GAMMA));
+		}
 	
-	glImage.buffer.SetPixel(x, y, mapped.r, mapped.g, mapped.b, 1.0);
+		glImage.buffer.SetPixel(x, y, outputColor.r, outputColor.g, outputColor.b, 1.0);
+	}
+
 }
 
 inline void Trace(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
@@ -174,8 +183,8 @@ int main()
 	/*
 		Initialize scene
 	*/
-	CornellBoxScene scene{2.0f, 2.0f, 2.0f};
-	//HexagonScene scene;
+	//CornellBoxScene scene{2.0f, 2.0f, 2.0f};
+	HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
