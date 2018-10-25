@@ -176,7 +176,7 @@ public:
 	}
 };
 
-Ray RandomHemisphereRay(vec3& origin, vec3& incomingDirection, vec3& surfaceNormal, UniformRandomGenerator& gen);
+Ray RandomHemisphereRay(vec3& origin, vec3& incomingDirection, vec3& surfaceNormal, UniformRandomGenerator& gen, float& cosTheta);
 
 class Camera
 {
@@ -547,6 +547,7 @@ public:
 			vec3 lightDirection;
 			RayIntersectionInfo hitInfo;
 			double distanceSq = 0.0;
+			float dotAngle = 0.0f;
 			for (SceneObject* lightSource : lights)
 			{
 				for (unsigned int sample = 0; sample < LIGHT_SAMPLE_COUNT; ++sample)
@@ -559,17 +560,16 @@ public:
 					Ray shadowRay = Ray(intersectionPoint, lightDirection);
 					if (!IntersectRay(shadowRay, hitInfo) || (hitInfo.object == lightSource))
 					{
-						double dotAngle = double(std::max(0.0f, glm::dot(normal, lightDirection)));
-						directLight += lightSource->emission /* * distanceSq*/ * dotAngle;
+						dotAngle = std::max(0.0f, glm::dot(normal, lightDirection));
+						directLight += lightSource->emission /* * distanceSq*/ *  double(dotAngle);
 					}
 				}
 			}
 			directLight /= double(lights.size() * LIGHT_SAMPLE_COUNT);
 
 			// Indirect lighting
-			Ray newRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator);
-			double dotAngle = double(std::max(0.0f, glm::dot(normal, newRay.direction)));
-			ColorDbl indirectLight = TraceRay(newRay, --traceDepth) * dotAngle;
+			Ray newRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, dotAngle);
+			ColorDbl indirectLight = TraceRay(newRay, --traceDepth) * double(dotAngle);
 
 			// Return all light contribution
 			double pdf = M_ONE_OVER_TWO_PI; // 1.0 / M_TWO_PI;
