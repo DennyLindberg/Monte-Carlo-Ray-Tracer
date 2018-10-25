@@ -178,18 +178,19 @@ int main()
 	window.Clear();
     window.SwapFramebuffer();
     window.Clear();
+	window.SwapFramebuffer();
 
 	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	/*
 		Initialize scene
 	*/
-	CornellBoxScene scene{2.0f, 2.0f, 2.0f};
-	//HexagonScene scene;
+	//CornellBoxScene scene{10.0f, 10.0f, 10.0f};
+	HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
-	scene.AddExampleLight(ColorDbl{3.0f});
+	scene.AddExampleLight(ColorDbl{10.0f});
 	scene.CacheLights();
 	scene.backgroundColor = {0.0f, 0.0f, 0.0f};
 	scene.LIGHT_SAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;

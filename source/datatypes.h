@@ -570,7 +570,10 @@ public:
 
 			// Indirect lighting
 			Ray newRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, dotAngle);
-			ColorDbl indirectLight = TraceRay(newRay, uniformGenerator, --traceDepth);
+			vec3 Ryx = ray.origin - intersectionPoint;
+			double lengthSq = glm::max(1.0f, glm::dot(Ryx, Ryx));
+			double dot = glm::dot(glm::normalize(Ryx), newRay.direction);
+			ColorDbl indirectLight = dot * dot * TraceRay(newRay, uniformGenerator, --traceDepth) / lengthSq;
 
 			// Return all light contribution
 			double pdf = M_ONE_OVER_TWO_PI; // 1.0 / M_TWO_PI;

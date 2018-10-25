@@ -26,9 +26,9 @@ public:
 
 		ceiling->color = ColorDbl( 0.2 );
 		floor->color   = ColorDbl( 0.2 );
-		walls1->color = ColorDbl(0.0, 0.1, 0.0);
-		walls2->color = ColorDbl(0.1, 0.0, 0.0);
-		walls3->color = ColorDbl(0.05, 0.0, 0.025);
+		walls1->color = ColorDbl(0.2);
+		walls2->color = ColorDbl(0.2);
+		walls3->color = ColorDbl(0.2);
 
 		// Ceiling corners
 		//	   {  width, height, length }
@@ -145,8 +145,8 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = ColorDbl( 0.1, 0.0, 0.0 );
-		rightWall->color	 = ColorDbl( 0.0, 0.1, 0.0 );
+		leftWall->color		 = ColorDbl( 0.1, 0.02, 0.02 );
+		rightWall->color	 = ColorDbl( 0.02, 0.1, 0.02 );
 		whiteSegments->color = ColorDbl( 0.3 );
 
 		// Box corners
@@ -173,10 +173,10 @@ public:
 
 	virtual void MoveCameraToRecommendedPosition(Camera& camera)
 	{
-		camera.SetView(vec3(0.0f, 0.0f, 1.5f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+		camera.SetView(vec3(0.0f, 0.0f, halfLength), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 	}
 
-	void AddExampleSpheres(float radius = 0.3f)
+	void AddExampleSpheres(float radius = 2.0f)
 	{
 		SphereObject* leftSphere   = CreateObject<SphereObject>();
 		SphereObject* middleSphere = CreateObject<SphereObject>();
@@ -197,9 +197,9 @@ public:
 		middleSphere->position = vec3(0, 0, 0);
 		rightSphere->position  = vec3(widthOffset, heightOffset, depthOffset);
 
-		leftSphere->color   = ColorDbl(0.4f, 0.0f, 0.0f);
+		leftSphere->color   = ColorDbl(0.5f, 0.0f, 0.0f);
 		middleSphere->color = ColorDbl(0.0f, 0.4f, 0.0f);
-		rightSphere->color  = ColorDbl(0.0f, 0.0f, 0.4f);
+		rightSphere->color  = ColorDbl(0.0f, 0.0f, 0.5f);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
