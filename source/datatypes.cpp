@@ -27,7 +27,12 @@ void PixelBuffer::AddRayColor(unsigned int pixelIndex, ColorDbl color)
 	data[pixelIndex + 1] += color.g;
 	data[pixelIndex + 2] += color.b;
 
-	rayCount[pixelIndex]++;
+	//rayCount[pixelIndex]++;
+}
+
+void PixelBuffer::AddRayCount(unsigned int pixelIndex, unsigned int count)
+{
+	rayCount[pixelIndex] += count;
 }
 
 uint64_t PixelBuffer::GetRayCount(unsigned int pixelIndex)

@@ -29,10 +29,10 @@ static const float SCREEN_UPDATE_DELAY = 0.1f;
 static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
-static const bool RAY_TRACE_RANDOM = false;
-static const unsigned int RAY_TRACE_DEPTH = 5;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 32;
-static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 32;
+static const bool RAY_TRACE_RANDOM = true;
+static const unsigned int RAY_TRACE_DEPTH = 3;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
+static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
 
 static const bool USE_MULTITHREADING = true;
 typedef std::vector<std::thread> ThreadVector;
@@ -83,10 +83,28 @@ inline void TraceSubPixels(unsigned int x, unsigned int y, Camera& camera, Scene
 		
 		camera.pixels.AddRayColor(pixelIndex, rayColor);
 	}
+	camera.pixels.AddRayCount(pixelIndex, RAY_COUNT_PER_PIXEL);
 
 	// When done, normalize colors
 	ColorDbl outputColor = camera.pixels.GetPixelColor(x, y) / double(camera.pixels.GetRayCount(pixelIndex));
-	glImage.buffer.SetPixel(x, y, outputColor.r, outputColor.g, outputColor.b, 1.0);
+	
+	vec3 mapped;
+	double gamma = 1.0;
+	if constexpr(true)
+	{
+		// Reinhard Tone Mapping
+		mapped = outputColor / (outputColor + ColorDbl(2.0));
+		mapped = pow(mapped, vec3(1.0 / gamma));
+	}
+	else
+	{
+		// Exposure tone mapping
+		double exposure = 0.5;
+		mapped = ColorDbl(1.0) - glm::exp(-outputColor * exposure);
+		mapped = pow(mapped, vec3(1.0 / gamma));
+	}
+	
+	glImage.buffer.SetPixel(x, y, mapped.r, mapped.g, mapped.b, 1.0);
 }
 
 inline void Trace(unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
@@ -161,7 +179,7 @@ int main()
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
-	scene.AddExampleLight({1.0f, 1.0f, 1.0f});
+	scene.AddExampleLight(ColorDbl{1.0f});
 	scene.CacheLights();
 	scene.backgroundColor = {0.0f, 0.0f, 0.0f};
 	scene.LIGHT_SAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;
