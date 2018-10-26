@@ -1,5 +1,12 @@
 # A Monte Carlo Path Tracer in C++ by Denny Lindberg and Molly Middagsfjell for the course TNCG15: Advanced Global Illumination and Rendering
-This project uses:
+
+<p align="center"><img src="cornellbox.png"></p>
+
+# Quickstart
+Run `premake5 vs2017` via the terminal or command line in the root folder to generate a Visual Studio 2017 solution in the temp folder. Open the solution and compile as normal. For more details, look further down.
+
+
+# This project uses:
 
 **C++17** as the minimum standard
 
@@ -15,8 +22,6 @@ This project uses:
 
 
 # Getting started
-
-Quickstart: Run `premake5 vs2017` via the terminal or command line in the root folder to generate a Visual Studio 2017 solution in the temp folder. Open the solution and compile as normal.
 
 ## Folder structure
 
