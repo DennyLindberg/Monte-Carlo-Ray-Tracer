@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <memory>
+#include <algorithm>
 #include "../thirdparty/lodepng.h"
 
 #define INTERNAL_PIXEL_FORMAT GL_RGBA
@@ -42,6 +43,9 @@ void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, GLubyte r, GLubyte 
 
 void GLImageBuffer::SetPixel(unsigned int x, unsigned int y, double r, double g, double b, double a)
 {
+	r = std::max(std::min(1.0, r), 0.0);
+	g = std::max(std::min(1.0, g), 0.0);
+	b = std::max(std::min(1.0, b), 0.0);
 	SetPixel(x, y, GLubyte(r*255.0), GLubyte(g*255.0), GLubyte(b*255.0), GLubyte(a*255.0));
 }
 

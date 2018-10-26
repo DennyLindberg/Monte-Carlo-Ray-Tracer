@@ -171,6 +171,7 @@ public:
 
 	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo) = 0;
 	virtual vec3 GetSurfaceNormal(vec3 location, unsigned int index) = 0;
+	virtual bool IsLight() { return false; };
 	virtual vec3 GetRandomPointOnSurface(UniformRandomGenerator& gen)
 	{
 		return position;
@@ -392,6 +393,8 @@ public:
 		AddQuad(p1, p2, p3, p4);
 	}
 
+	virtual bool IsLight() override { return true; };
+
 	virtual vec3 GetRandomPointOnSurface(UniformRandomGenerator& gen) override
 	{
 		float u = gen.RandomFloat();
@@ -529,7 +532,7 @@ public:
 		vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
 		vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
 
-		if (traceDepth == 0)
+		if (traceDepth == 0 || object.IsLight())
 		{
 			return importance * object.emission;
 		}

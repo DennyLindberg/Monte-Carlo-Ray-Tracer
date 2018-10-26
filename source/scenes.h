@@ -145,9 +145,9 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = ColorDbl( 0.3, 0.1, 0.1 );
-		rightWall->color	 = ColorDbl( 0.1, 0.3, 0.1 );
-		whiteSegments->color = ColorDbl( 0.5 );
+		leftWall->color		 = ColorDbl( 0.4, 0.1, 0.1 );
+		rightWall->color	 = ColorDbl( 0.1, 0.4, 0.1 );
+		whiteSegments->color = ColorDbl( 0.3 );
 
 		// Box corners
 		vec3 c1{ -halfWidth, halfHeight,  halfLength };
