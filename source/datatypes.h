@@ -35,6 +35,12 @@ public:
 		data.resize(dataSize);
 		rayCount.resize(dataSize);
 
+		for (unsigned int i = 0; i < dataSize; ++i)
+		{
+			data[i] = 0.0;
+			rayCount[i] = 0;
+		}
+
 		dx = 2.0 / (double)imageWidth;
 		dy = 2.0 / (double)imageHeight;
 		aspect = imageWidth / (double)imageHeight;

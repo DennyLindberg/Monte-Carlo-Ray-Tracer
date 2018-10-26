@@ -22,17 +22,17 @@ bool quit = false;
 
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
-static const unsigned int SCREEN_WIDTH = 640;
-static const unsigned int SCREEN_HEIGHT = 480;
+static const unsigned int SCREEN_WIDTH = 240;
+static const unsigned int SCREEN_HEIGHT = 180;
 static const float SCREEN_UPDATE_DELAY = 0.1f;
 
 static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
-static const unsigned int RAY_TRACE_DEPTH = 10;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 4;
-static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 32;
+static const unsigned int RAY_TRACE_DEPTH = 100;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
+static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
 
 static const bool APPLY_TONE_MAPPING = true;
 static const bool USE_SIMPLE_TONE_MAPPER = true;
@@ -121,9 +121,12 @@ inline void Trace(unsigned int threadId, unsigned int yBegin, unsigned int yEnd,
 {
 	if constexpr (RAY_TRACE_RANDOM)
 	{
-
 		unsigned int x = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
 		unsigned int y = (unsigned int)(uniformGenerator.RandomFloat(float(yBegin), float(yEnd)));
+
+		x = std::min(x, SCREEN_WIDTH - 1);
+		y = std::min(y, yEnd - 1);
+
 		TraceSubPixels(threadId, x, y, camera, scene, glImage);
 	}
 	else
@@ -147,7 +150,7 @@ void TraceThreaded(ThreadInfo& thread)
 
 	if (thread.id == NUM_SUPPORTED_THREADS - 1)
 	{
-		yEnd = SCREEN_HEIGHT-1;
+		yEnd = SCREEN_HEIGHT;
 	}
 
 	do
@@ -176,17 +179,14 @@ int main()
 	OpenGLWindow window("OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
 	window.Clear();
-    window.SwapFramebuffer();
-    window.Clear();
-	window.SwapFramebuffer();
 
 	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	/*
 		Initialize scene
 	*/
-	CornellBoxScene scene{10.0f, 10.0f, 10.0f};
-	//HexagonScene scene;
+	//CornellBoxScene scene{10.0f, 10.0f, 10.0f};
+	HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();

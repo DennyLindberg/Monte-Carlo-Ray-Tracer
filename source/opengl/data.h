@@ -25,6 +25,11 @@ public:
 		size = numPixels * 4;
 		glData.resize(size);
 
+		for (int i = 0; i < size; ++i)
+		{
+			glData[i] = 0;
+		}
+
 		glGenTextures(1, &textureId);
 		UpdateParameters();
 	}
