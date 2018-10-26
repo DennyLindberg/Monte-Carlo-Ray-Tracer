@@ -26,8 +26,8 @@ public:
 
 		ceiling->color = ColorDbl( 0.2 );
 		floor->color   = ColorDbl( 0.2 );
-		walls1->color = ColorDbl(0.2);
-		walls2->color = ColorDbl(0.2);
+		walls1->color = ColorDbl(0.2, 0.01, 0.01);
+		walls2->color = ColorDbl(0.01, 0.2, 0.01);
 		walls3->color = ColorDbl(0.2);
 
 		// Ceiling corners
@@ -89,9 +89,9 @@ public:
 		middleSphere->position = vec3(0.0f, -heightOffset, 8.0f);
 		rightSphere->position = vec3(-widthOffset, -heightOffset, 6.0f);
 
-		leftSphere->color = ColorDbl(0.5f, 0.0f, 0.0f);
-		middleSphere->color = ColorDbl(0.0f, 0.5f, 0.0f);
-		rightSphere->color = ColorDbl(0.0f, 0.0f, 0.5f);
+		leftSphere->color = ColorDbl(0.2);
+		middleSphere->color = ColorDbl(0.2);
+		rightSphere->color = ColorDbl(0.2);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
@@ -145,9 +145,9 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = ColorDbl( 0.1, 0.02, 0.02 );
-		rightWall->color	 = ColorDbl( 0.02, 0.1, 0.02 );
-		whiteSegments->color = ColorDbl( 0.3 );
+		leftWall->color		 = ColorDbl( 0.3, 0.1, 0.1 );
+		rightWall->color	 = ColorDbl( 0.1, 0.3, 0.1 );
+		whiteSegments->color = ColorDbl( 0.5 );
 
 		// Box corners
 		vec3 c1{ -halfWidth, halfHeight,  halfLength };
@@ -197,9 +197,9 @@ public:
 		middleSphere->position = vec3(0, 0, 0);
 		rightSphere->position  = vec3(widthOffset, heightOffset, depthOffset);
 
-		leftSphere->color   = ColorDbl(0.5f, 0.0f, 0.0f);
-		middleSphere->color = ColorDbl(0.0f, 0.4f, 0.0f);
-		rightSphere->color  = ColorDbl(0.0f, 0.0f, 0.5f);
+		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f);
+		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f);
+		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)

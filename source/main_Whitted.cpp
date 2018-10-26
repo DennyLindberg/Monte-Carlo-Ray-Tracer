@@ -22,8 +22,8 @@ bool quit = false;
 
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
-static const unsigned int SCREEN_WIDTH = 640;
-static const unsigned int SCREEN_HEIGHT = 480;
+static const unsigned int SCREEN_WIDTH = 320;
+static const unsigned int SCREEN_HEIGHT = 240;
 static const float SCREEN_UPDATE_DELAY = 0.1f;
 
 static const float CAMERA_FOV = 90.0f;
@@ -185,8 +185,8 @@ int main()
 	/*
 		Initialize scene
 	*/
-	//CornellBoxScene scene{10.0f, 10.0f, 10.0f};
-	HexagonScene scene;
+	CornellBoxScene scene{10.0f, 10.0f, 10.0f};
+	//HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();

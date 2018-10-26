@@ -1,5 +1,5 @@
 /*
-	Copyright Denny Lindberg and Molly Middagsfjell 2018
+Copyright Denny Lindberg and Molly Middagsfjell 2018
 */
 
 #pragma once
@@ -9,8 +9,8 @@
 
 #define INTERSECTION_ERROR_MARGIN FLT_EPSILON*20.0f // fulhack: This won't work for steep angles.
 
-enum class SurfaceType	   { Diffuse, Specular, Diffuse_Specular, Refractive, COUNT };
-enum class DiffuseType	   { Lambertian, OrenNayar, COUNT };
+enum class SurfaceType { Diffuse, Specular, Diffuse_Specular, Refractive, COUNT };
+enum class DiffuseType { Lambertian, OrenNayar, COUNT };
 enum class LightSourceType { Point, Sphere, Rectangle, COUNT };
 
 class PixelBuffer
@@ -121,7 +121,7 @@ struct Triangle
 		const float EPSILON = 0.0000001f;
 
 		/*
-			Detect if ray is parallel to the triangle
+		Detect if ray is parallel to the triangle
 		*/
 		vec3 edge1 = vertex1 - vertex0;
 		vec3 edge2 = vertex2 - vertex0;
@@ -134,7 +134,7 @@ struct Triangle
 		}
 
 		/*
-			Detect if ray is inside the triangle
+		Detect if ray is inside the triangle
 		*/
 		float f = 1.0f / a;
 		vec3 s = rayOrigin - vec3(vertex0);
@@ -190,7 +190,7 @@ public:
 	PixelBuffer pixels;
 
 	Camera(unsigned int width, unsigned int height, float fovY)
-		: pixels{width, height}
+		: pixels{ width, height }
 	{
 		// Pre-calculate fov scaling for pixel-to-ray generation
 		float halfAngle = (fovY * 0.5f);
@@ -200,7 +200,7 @@ public:
 
 	~Camera() = default;
 
-	void SetView(vec3 position, vec3 lookAtPosition, vec3 cameraUp = vec3{0.0f, 1.0f, 0.0f})
+	void SetView(vec3 position, vec3 lookAtPosition, vec3 cameraUp = vec3{ 0.0f, 1.0f, 0.0f })
 	{
 		this->position = position;
 		viewMatrix = glm::inverse(glm::lookAtRH(position, lookAtPosition, cameraUp));
@@ -209,20 +209,20 @@ public:
 	inline Ray GetPixelRay(float x, float y) const
 	{
 		/*
-			When we create a ray through a pixel, we get a pinhole camera.
-			This gives us a projection by default.
+		When we create a ray through a pixel, we get a pinhole camera.
+		This gives us a projection by default.
 		*/
 		const float xOrigin = -1.0f;
 		const float yOrigin = 1.0f;
 
-		vec3 direction {
+		vec3 direction{
 			xOrigin + x * pixels.deltaX(),	// x
 			yOrigin - y * pixels.deltaY(),	// y
 			-1.0f,							// z
 		};
 
 		// Correct ray direction to match field of view and non-square image output
-        direction.x *= fovPixelScale * float(pixels.aspectRatio());
+		direction.x *= fovPixelScale * float(pixels.aspectRatio());
 		direction.y *= fovPixelScale;
 
 		// Rotate ray to face camera direction
@@ -245,7 +245,7 @@ public:
 		int elementIndex = 0;
 		float hitDistance = 0.0f;
 		float nearestDistance = FLOAT_INFINITY;
-		for (unsigned int index=0; index<triangles.size(); ++index)
+		for (unsigned int index = 0; index<triangles.size(); ++index)
 		{
 			if (triangles[index].Intersects(rayOrigin, rayDirection, hitDistance) && hitDistance < nearestDistance)
 			{
@@ -306,7 +306,7 @@ public:
 		float radiusSq = radius * radius;
 
 		/*
-			Code based on ScratchAPixel guide
+		Code based on ScratchAPixel guide
 		*/
 		float t0, t1;
 
@@ -324,7 +324,7 @@ public:
 
 		if (t0 > t1) std::swap(t0, t1);
 
-		if (t0 < 0) 
+		if (t0 < 0)
 		{
 			t0 = t1; // if t0 is negative, let's use t1 instead 
 			if (t0 < 0) return false; // both t0 and t1 are negative 
@@ -387,7 +387,7 @@ public:
 		vec3 p3 = position + xVector + yVector;
 		vec3 p4 = position + xVector - yVector;
 
-		position += lightDirection*INTERSECTION_ERROR_MARGIN; // We need to offset the center so that we don't collide with it
+		position += lightDirection * INTERSECTION_ERROR_MARGIN; // We need to offset the center so that we don't collide with it
 
 		AddQuad(p1, p2, p3, p4);
 	}
@@ -396,8 +396,8 @@ public:
 	{
 		float u = gen.RandomFloat();
 		float v = gen.RandomFloat();
-		vec3 corner = position - xVector/2.0f - yVector/2.0f;
-		return corner + xVector*u + yVector*v;
+		vec3 corner = position - xVector / 2.0f - yVector / 2.0f;
+		return corner + xVector * u + yVector * v;
 	}
 };
 
@@ -408,7 +408,7 @@ protected:
 	std::vector<SceneObject*> lights;	// TODO: std::pointer type
 
 public:
-	ColorDbl backgroundColor = {0.0f, 0.0f, 0.0f};
+	ColorDbl backgroundColor = { 0.0f, 0.0f, 0.0f };
 	unsigned int LIGHT_SAMPLE_COUNT = 32;
 
 	~Scene()
@@ -510,34 +510,29 @@ public:
 		// kt = 1 - kr;
 	}
 
-	// element wise multiplication
-	inline ColorDbl multiply(const ColorDbl& u, const ColorDbl& v) 
-	{
-		return ColorDbl{ u.r*v.r, u.g*v.g, u.b*v.b };
-	}
-
-	ColorDbl TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsigned int traceDepth = 5)
+	ColorDbl TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsigned int traceDepth = 5, ColorDbl importance = ColorDbl{ 1.0 })
 	{
 		/*
 			Lecture 11 - "We should not stop the ray after a fixed number of iterations. Terminate on light sources or lambertian/ON reflectors."
-			Lecture 13 - "We terminate the ray at Yn"
-			
+
 			=> We terminate using a max ray depth Yn
 		*/
-		if (traceDepth == 0)
-		{
-			return ColorDbl{ 0.0 };
-		}
 
 		RayIntersectionInfo hitInfo;
 		if (!IntersectRay(ray, hitInfo))
 		{
-			return backgroundColor;
+			return importance * backgroundColor;
 		}
 
 		SceneObject& object = *hitInfo.object;
+		ColorDbl surfaceColor = object.color;
 		vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
 		vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
+
+		if (traceDepth == 0)
+		{
+			return importance * object.emission;
+		}
 
 		// Lambertian diffuse reflector
 		if (object.surfaceType == SurfaceType::Diffuse)
@@ -548,7 +543,9 @@ public:
 			vec3 lightDirection;
 			RayIntersectionInfo hitInfo;
 			float distanceSq = 0.0;
-			float dotAngle = 0.0f;
+			float surfaceDot = 0.0f;
+			float lightDot = 0.0f;
+			double pdf;
 			for (SceneObject* lightSource : lights)
 			{
 				for (unsigned int sample = 0; sample < LIGHT_SAMPLE_COUNT; ++sample)
@@ -561,30 +558,44 @@ public:
 					Ray shadowRay = Ray(intersectionPoint, lightDirection);
 					if (!IntersectRay(shadowRay, hitInfo) || (hitInfo.object == lightSource))
 					{
-						dotAngle = std::max(0.0f, glm::dot(normal, lightDirection));
-						directLight += lightSource->emission * double(lightSource->area * dotAngle / distanceSq);
+						surfaceDot = std::max(0.0f, glm::dot(normal, lightDirection));
+						lightDot = std::max(0.0f, glm::dot(vec3(0.0f, -1.0f, 0.0f), lightDirection*-1.0f));
+						pdf = 1.0 / (lightSource->area);
+						directLight += lightSource->emission * double(surfaceDot * lightDot / distanceSq) / pdf;
 					}
 				}
 			}
 			directLight /= double(lights.size() * LIGHT_SAMPLE_COUNT);
 
+			/*
+				Modify importance value
+			*/
+			double rho = 1.0;
+			ColorDbl brdf = surfaceColor * rho / M_PI;
+			pdf = 1.0 / (2.0 * M_PI);
+
+			importance = importance * brdf / pdf;
+
+			double p = std::max(importance.x, std::max(importance.y, importance.z));
+			if (uniformGenerator.RandomDouble(0.0, 1.0) > p)
+			{
+				return importance * object.emission; // Russian roulette terminated the path
+			}
+			importance *= 1.0 / p;
+
 			// Indirect lighting
-			Ray newRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, dotAngle);
-			vec3 Ryx = ray.origin - intersectionPoint;
-			double lengthSq = glm::max(1.0f, glm::dot(Ryx, Ryx));
-			double dot = glm::dot(glm::normalize(Ryx), newRay.direction);
-			ColorDbl indirectLight = dot * dot * TraceRay(newRay, uniformGenerator, --traceDepth) / lengthSq;
+			Ray bouncedRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, surfaceDot);
+			ColorDbl indirectLight = TraceRay(bouncedRay, uniformGenerator, --traceDepth, importance);
 
 			// Return all light contribution
-			double pdf = M_ONE_OVER_TWO_PI; // 1.0 / M_TWO_PI;
-			return object.emission + multiply(object.color, directLight / M_PI + 2.0 * indirectLight / pdf);
+			return importance*(object.emission + directLight + indirectLight);
 		}
 		else if (object.surfaceType == SurfaceType::Specular)
 		{
 			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
 			vec3 newDirection = glm::reflect(ray.direction, normal);
-			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth);
+			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth, importance);
 		}
 		else if (object.surfaceType == SurfaceType::Refractive)
 		{
@@ -604,12 +615,12 @@ public:
 			if (kr < 1.0f) {
 				vec3 refractionDirection = glm::normalize(refract(ray.direction, normal, n2));
 				vec3 refractionRayOrig = outside ? intersectionPoint - bias : intersectionPoint + bias;
-				refractionColor = TraceRay(Ray(refractionRayOrig, refractionDirection), uniformGenerator, traceDepth-1);
+				refractionColor = TraceRay(Ray(refractionRayOrig, refractionDirection), uniformGenerator, traceDepth - 1, importance);
 			}
 
 			vec3 reflectionDirection = glm::reflect(ray.direction, normal);
 			vec3 reflectionRayOrig = outside ? intersectionPoint + bias : intersectionPoint - bias;
-			reflectionColor = TraceRay(Ray(reflectionRayOrig, reflectionDirection), uniformGenerator, --traceDepth);
+			reflectionColor = TraceRay(Ray(reflectionRayOrig, reflectionDirection), uniformGenerator, --traceDepth, importance);
 
 			// mix the two
 			return reflectionColor * kr + refractionColor * (1 - kr);
