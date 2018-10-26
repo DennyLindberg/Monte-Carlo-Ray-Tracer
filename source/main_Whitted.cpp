@@ -22,8 +22,8 @@ bool quit = false;
 
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
-static const unsigned int SCREEN_WIDTH = 320;
-static const unsigned int SCREEN_HEIGHT = 240;
+static const unsigned int SCREEN_WIDTH = 640;
+static const unsigned int SCREEN_HEIGHT = 480;
 static const float SCREEN_UPDATE_DELAY = 0.1f;
 
 static const float CAMERA_FOV = 90.0f;
@@ -31,8 +31,8 @@ static const float CAMERA_FOV = 90.0f;
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
 static const unsigned int RAY_TRACE_DEPTH = 10;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
-static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 64;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 4;
+static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 32;
 
 static const bool APPLY_TONE_MAPPING = true;
 static const bool USE_SIMPLE_TONE_MAPPER = true;
@@ -185,8 +185,8 @@ int main()
 	/*
 		Initialize scene
 	*/
-	//CornellBoxScene scene{10.0f, 10.0f, 10.0f};
-	HexagonScene scene;
+	CornellBoxScene scene{10.0f, 10.0f, 10.0f};
+	//HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();

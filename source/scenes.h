@@ -85,7 +85,7 @@ public:
 
 		float widthOffset = 6.0f - radius;
 		float heightOffset = 5.0f - radius;
-		leftSphere->position = vec3(widthOffset, 2.0, 10.0f);
+		leftSphere->position = vec3(3.0, 2.0, 10.0f);
 		middleSphere->position = vec3(-3.0f, 0.0, 8.0f);
 		rightSphere->position = vec3(1.0f, -3.0, 6.0f);
 
@@ -95,7 +95,7 @@ public:
 
 		// Cube1
 		CubeObject* cube = CreateObject<CubeObject>();
-		cube->SetGeometry({ widthOffset, -5.0, 10.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, 7.0f-radius);
+		cube->SetGeometry({ 3.0, -5.0, 10.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, 7.0f-radius);
 		cube->color = ColorDbl(0.01, 0.3, 0.8);
 		cube->surfaceType = SurfaceType::Diffuse;
 
