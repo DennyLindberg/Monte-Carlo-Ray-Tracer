@@ -32,7 +32,7 @@ static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
 static const unsigned int RAY_TRACE_DEPTH = 5;
 static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
-static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
+static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 512;
 
 static const bool APPLY_TONE_MAPPING = true;
 static const bool USE_SIMPLE_TONE_MAPPER = true;
@@ -185,15 +185,15 @@ int main()
 	/*
 		Initialize scene
 	*/
-	CornellBoxScene scene{10.0f, 10.0f, 10.0f};
-	//HexagonScene scene;
+	//CornellBoxScene scene{10.0f, 10.0f, 10.0f};
+	HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();
-	scene.AddExampleLight(ColorDbl{10.0f});
+	scene.AddExampleLight(ColorDbl{100.0f});
 	scene.CacheLights();
 	scene.backgroundColor = {0.0f, 0.0f, 0.0f};
-	scene.LIGHT_SAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;
+	scene.LIGHT_SUBSAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;
 
 	/*
 		Application loop

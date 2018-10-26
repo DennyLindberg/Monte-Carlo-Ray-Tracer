@@ -409,7 +409,7 @@ protected:
 
 public:
 	ColorDbl backgroundColor = { 0.0f, 0.0f, 0.0f };
-	unsigned int LIGHT_SAMPLE_COUNT = 32;
+	unsigned int LIGHT_SUBSAMPLE_COUNT = 32;
 
 	~Scene()
 	{
@@ -539,6 +539,7 @@ public:
 		{
 			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
+			ColorDbl individualLightSubSamples{ 0.0f };
 			ColorDbl directLight{ 0.0f };
 			vec3 lightDirection;
 			RayIntersectionInfo hitInfo;
@@ -548,7 +549,8 @@ public:
 			double pdf;
 			for (SceneObject* lightSource : lights)
 			{
-				for (unsigned int sample = 0; sample < LIGHT_SAMPLE_COUNT; ++sample)
+				individualLightSubSamples = ColorDbl{ 0.0f };
+				for (unsigned int sample = 0; sample < LIGHT_SUBSAMPLE_COUNT; ++sample)
 				{
 					lightDirection = lightSource->GetRandomPointOnSurface(uniformGenerator) - intersectionPoint;
 					distanceSq = std::max(1.0f, glm::dot(lightDirection, lightDirection));
@@ -561,11 +563,11 @@ public:
 						surfaceDot = std::max(0.0f, glm::dot(normal, lightDirection));
 						lightDot = std::max(0.0f, glm::dot(vec3(0.0f, -1.0f, 0.0f), lightDirection*-1.0f));
 						pdf = 1.0 / (lightSource->area);
-						directLight += lightSource->emission * double(surfaceDot * lightDot / distanceSq) / pdf;
+						individualLightSubSamples += lightSource->emission * double(surfaceDot * lightDot / distanceSq) / pdf;
 					}
 				}
+				directLight += individualLightSubSamples/double(LIGHT_SUBSAMPLE_COUNT);
 			}
-			directLight /= double(lights.size() * LIGHT_SAMPLE_COUNT);
 
 			/*
 				Modify importance value
@@ -595,7 +597,7 @@ public:
 			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
 			vec3 newDirection = glm::reflect(ray.direction, normal);
-			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth, importance);
+			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, traceDepth, importance);
 		}
 		else if (object.surfaceType == SurfaceType::Refractive)
 		{
