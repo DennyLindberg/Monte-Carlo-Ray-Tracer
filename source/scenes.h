@@ -89,9 +89,9 @@ public:
 		middleSphere->position = vec3(0.0f, -heightOffset, 8.0f);
 		rightSphere->position = vec3(-widthOffset, -heightOffset, 6.0f);
 
-		leftSphere->color = ColorDbl(0.2);
-		middleSphere->color = ColorDbl(0.2);
-		rightSphere->color = ColorDbl(0.2);
+		leftSphere->color = ColorDbl(0.5);
+		middleSphere->color = ColorDbl(0.5);
+		rightSphere->color = ColorDbl(0.5);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
@@ -145,9 +145,9 @@ public:
 		rightWall = CreateObject<PolygonObject>();
 		whiteSegments = CreateObject<PolygonObject>();
 
-		leftWall->color		 = ColorDbl( 0.4, 0.1, 0.1 );
-		rightWall->color	 = ColorDbl( 0.1, 0.4, 0.1 );
-		whiteSegments->color = ColorDbl( 0.3 );
+		leftWall->color		 = ColorDbl( 0.2, 0.01, 0.01 );
+		rightWall->color	 = ColorDbl( 0.01, 0.2, 0.01 );
+		whiteSegments->color = ColorDbl( 0.2 );
 
 		// Box corners
 		vec3 c1{ -halfWidth, halfHeight,  halfLength };
@@ -176,30 +176,35 @@ public:
 		camera.SetView(vec3(0.0f, 0.0f, halfLength), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 	}
 
-	void AddExampleSpheres(float radius = 2.0f)
+	void AddExampleSpheres(float radius = 1.5f)
 	{
 		SphereObject* leftSphere   = CreateObject<SphereObject>();
 		SphereObject* middleSphere = CreateObject<SphereObject>();
-		SphereObject* rightSphere  = CreateObject<SphereObject>();
+		SphereObject* rightSphere = CreateObject<SphereObject>();
+		SphereObject* airSphere  = CreateObject<SphereObject>();
 
 		leftSphere->surfaceType   = SurfaceType::Diffuse;
 		middleSphere->surfaceType = SurfaceType::Specular;
-		rightSphere->surfaceType  = SurfaceType::Diffuse;
+		rightSphere->surfaceType = SurfaceType::Diffuse;
+		airSphere->surfaceType  = SurfaceType::Diffuse;
 
 		leftSphere->radius   = radius;
 		middleSphere->radius = radius;
-		rightSphere->radius  = radius;
+		rightSphere->radius = radius;
+		airSphere->radius  = radius;
 
 		float widthOffset  = halfWidth - radius;
 		float depthOffset  = halfLength - radius;
 		float heightOffset = halfHeight - radius;
-		leftSphere->position   = vec3(-widthOffset,	-heightOffset, -depthOffset);
-		middleSphere->position = vec3(0, 0, 0);
-		rightSphere->position  = vec3(widthOffset, heightOffset, depthOffset);
+		leftSphere->position   = vec3(-widthOffset,	-heightOffset, -depthOffset/2.0);
+		middleSphere->position = vec3(0, -heightOffset, -depthOffset);
+		rightSphere->position = vec3(widthOffset, -heightOffset, -depthOffset / 2.0);
+		airSphere->position  = vec3(0, 0, -depthOffset);
 
-		leftSphere->color   = ColorDbl(1.0f, 0.0f, 0.0f);
-		middleSphere->color = ColorDbl(0.0f, 1.0f, 0.0f);
-		rightSphere->color  = ColorDbl(0.0f, 0.0f, 1.0f);
+		leftSphere->color   = ColorDbl(0.5);
+		middleSphere->color = ColorDbl(0.5);
+		rightSphere->color = ColorDbl(0.5);
+		airSphere->color  = ColorDbl(0.5);
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
