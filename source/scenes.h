@@ -69,7 +69,7 @@ public:
 		camera.SetView(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 10.0f), vec3(0.0f, 1.0f, 0.0f));
 	}
 
-	void AddExampleSpheres(float radius = 2.0f)
+	void AddExampleSpheres(float radius = 1.5f)
 	{
 		SphereObject* leftSphere = CreateObject<SphereObject>();
 		SphereObject* middleSphere = CreateObject<SphereObject>();
@@ -85,13 +85,31 @@ public:
 
 		float widthOffset = 6.0f - radius;
 		float heightOffset = 5.0f - radius;
-		leftSphere->position = vec3(widthOffset, -heightOffset, 10.0f);
-		middleSphere->position = vec3(0.0f, -heightOffset, 8.0f);
-		rightSphere->position = vec3(-widthOffset, -heightOffset, 6.0f);
+		leftSphere->position = vec3(widthOffset, 2.0, 10.0f);
+		middleSphere->position = vec3(-3.0f, 0.0, 8.0f);
+		rightSphere->position = vec3(1.0f, -3.0, 6.0f);
 
 		leftSphere->color = ColorDbl(0.5);
 		middleSphere->color = ColorDbl(0.5);
 		rightSphere->color = ColorDbl(0.5);
+
+		// Cube1
+		CubeObject* cube = CreateObject<CubeObject>();
+		cube->SetGeometry({ widthOffset, -5.0, 10.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, 7.0f-radius);
+		cube->color = ColorDbl(0.01, 0.3, 0.8);
+		cube->surfaceType = SurfaceType::Diffuse;
+
+		// Cube2
+		CubeObject* cube2 = CreateObject<CubeObject>();
+		cube2->SetGeometry({ -3.0, -5.0, 8.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, 5.0f-radius);
+		cube2->color = ColorDbl(0.8, 0.4, 0.01);
+		cube2->surfaceType = SurfaceType::Diffuse;
+
+		// Cube2 - middle
+		CubeObject* cube3 = CreateObject<CubeObject>();
+		cube3->SetGeometry({ 1.0, -5.0, 6.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 4.0f, 4.0f, 2.0f - radius);
+		cube3->color = ColorDbl(0.5, 0.2, 0.8);
+		cube3->surfaceType = SurfaceType::Diffuse;
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
@@ -164,7 +182,7 @@ public:
 		leftWall->AddQuad(f2, c2, c3, f3);
 		rightWall->AddQuad(f1, f4, c4, c1);
 
-		whiteSegments->AddQuad(c1, c4, c3, c2); // Ceiling
+		whiteSegments->AddQuad(c4, c3, c2, c1); // Ceiling
 		whiteSegments->AddQuad(f4, f3, c3, c4);	// Back wall
 		whiteSegments->AddQuad(f1, f2, f3, f4);	// Floor
 	}
@@ -189,22 +207,34 @@ public:
 		airSphere->surfaceType  = SurfaceType::Diffuse;
 
 		leftSphere->radius   = radius;
-		middleSphere->radius = radius;
+		middleSphere->radius = radius*1.5f;
 		rightSphere->radius = radius;
 		airSphere->radius  = radius;
 
 		float widthOffset  = halfWidth - radius;
 		float depthOffset  = halfLength - radius;
 		float heightOffset = halfHeight - radius;
-		leftSphere->position   = vec3(-widthOffset,	-heightOffset, -depthOffset/2.0);
-		middleSphere->position = vec3(0, -heightOffset, -depthOffset);
-		rightSphere->position = vec3(widthOffset, -heightOffset, -depthOffset / 2.0);
-		airSphere->position  = vec3(0, 0, -depthOffset);
+		leftSphere->position   = vec3(-widthOffset,	-heightOffset, 0.0f);
+		middleSphere->position = vec3(0, -halfHeight+middleSphere->radius, -halfLength+middleSphere->radius);
+		rightSphere->position = vec3(widthOffset, 0.0f, -depthOffset / 2.0);
+		airSphere->position  = vec3(0, heightOffset, -depthOffset);
 
 		leftSphere->color   = ColorDbl(0.5);
 		middleSphere->color = ColorDbl(0.5);
 		rightSphere->color = ColorDbl(0.5);
 		airSphere->color  = ColorDbl(0.5);
+
+		// Cube1
+		CubeObject* cube = CreateObject<CubeObject>();
+		cube->SetGeometry({ halfWidth-1.5f, -halfHeight, -depthOffset/2.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight-radius);
+		cube->color = ColorDbl(0.01, 0.3, 0.8);
+		cube->surfaceType = SurfaceType::Diffuse;
+
+		// Cube2
+		CubeObject* cube2 = CreateObject<CubeObject>();
+		cube2->SetGeometry({ -halfWidth + 1.5f, -halfHeight, -depthOffset + 1.5f }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 1.5f, 1.5f, halfHeight+radius);
+		cube2->color = ColorDbl(0.8, 0.4, 0.01);
+		cube2->surfaceType = SurfaceType::Diffuse;
 	}
 
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false)
