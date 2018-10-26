@@ -573,12 +573,6 @@ public:
 
 	ColorDbl TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsigned int traceDepth = 5, ColorDbl importance = ColorDbl{ 1.0 })
 	{
-		/*
-			Lecture 11 - "We should not stop the ray after a fixed number of iterations. Terminate on light sources or lambertian/ON reflectors."
-
-			=> We terminate using a max ray depth Yn
-		*/
-
 		RayIntersectionInfo hitInfo;
 		if (!IntersectRay(ray, hitInfo))
 		{
@@ -600,7 +594,7 @@ public:
 		{
 			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
-			ColorDbl individualLightSubSamples{ 0.0f };
+			ColorDbl subSampleContribution{ 0.0f };
 			ColorDbl directLight{ 0.0f };
 			vec3 lightDirection;
 			RayIntersectionInfo hitInfo;
@@ -610,7 +604,7 @@ public:
 			double pdf;
 			for (SceneObject* lightSource : lights)
 			{
-				individualLightSubSamples = ColorDbl{ 0.0f };
+				subSampleContribution = ColorDbl{ 0.0f };
 				for (unsigned int sample = 0; sample < LIGHT_SUBSAMPLE_COUNT; ++sample)
 				{
 					lightDirection = lightSource->GetRandomPointOnSurface(uniformGenerator) - intersectionPoint;
@@ -623,11 +617,15 @@ public:
 					{
 						surfaceDot = std::max(0.0f, glm::dot(normal, lightDirection));
 						lightDot = std::max(0.0f, glm::dot(vec3(0.0f, -1.0f, 0.0f), lightDirection*-1.0f));
-						pdf = 1.0 / (lightSource->area);
-						individualLightSubSamples += lightSource->emission * double(surfaceDot * lightDot / distanceSq) / pdf;
+
+						// Each subsample has the same multiplication of lightEmission / pdf,
+						// it has therefore been moved outside the inner loop to be multiplied only once.
+						subSampleContribution += double(surfaceDot * lightDot / distanceSq);
 					}
 				}
-				directLight += individualLightSubSamples/double(LIGHT_SUBSAMPLE_COUNT);
+
+				pdf = 1.0 / (lightSource->area);
+				directLight += lightSource->emission/pdf * subSampleContribution/double(LIGHT_SUBSAMPLE_COUNT);
 			}
 
 			/*

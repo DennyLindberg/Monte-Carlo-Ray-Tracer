@@ -1,7 +1,7 @@
-# A Monte Carlo Ray Tracer in C++ by Denny Lindberg and Molly Middagsfjell for the course TNCG15: Advanced Global Illumination and Rendering
+# A Monte Carlo Path Tracer in C++ by Denny Lindberg and Molly Middagsfjell for the course TNCG15: Advanced Global Illumination and Rendering
 This project uses:
 
-**C++14** as the minimum standard
+**C++17** as the minimum standard
 
 **premake5** for generating makefiles or solutions for the IDE - https://premake.github.io/download.html
 
@@ -14,7 +14,9 @@ This project uses:
 **lodepng** for loading and saving PNG files - https://lodev.org/lodepng/
 
 
-# Gettings started
+# Getting started
+
+Quickstart: Run `premake5 vs2017` via the terminal or command line in the root folder to generate a Visual Studio 2017 solution in the temp folder. Open the solution and compile as normal.
 
 ## Folder structure
 
@@ -34,14 +36,10 @@ Follow this guide for MacOSX: http://lazyfoo.net/tutorials/SDL/01_hello_SDL/mac/
 
 ## Get premake5 and generate the solution
 
-Either place the premake5 executable in the root folder or in a system path. Then open CMD, the terminal or Git Bash and type one of the two commands below:
+The generated solution will be placed in the temp folder. Either place the premake5 executable in the root folder or in a system path. Then open CMD, the terminal or Git Bash and type one of the two commands below:
 
 **Windows:** `premake5 vs2017` or `./premake5 vs2017`
 
 **MacOSX:** `premake5 xcode4` or `./premake5 xcode4`
 
 Whenever you do a `git pull` or add new files in the folder structure, re-run the premake command to update the solution. Most IDEs will detect the change and ask to update.
-
-## Open the solution
-
-Go to the `temp/` folder and open the generated solution file.

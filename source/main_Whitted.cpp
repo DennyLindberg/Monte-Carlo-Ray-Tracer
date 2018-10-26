@@ -22,8 +22,8 @@ bool quit = false;
 
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
-static const unsigned int SCREEN_WIDTH = 240;
-static const unsigned int SCREEN_HEIGHT = 180;
+static const unsigned int SCREEN_WIDTH = 320;
+static const unsigned int SCREEN_HEIGHT = 240;
 static const float SCREEN_UPDATE_DELAY = 0.1f;
 
 static const float CAMERA_FOV = 90.0f;
@@ -31,7 +31,7 @@ static const float CAMERA_FOV = 90.0f;
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
 static const unsigned int RAY_TRACE_DEPTH = 100;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1000;
 static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
 
 static const bool APPLY_TONE_MAPPING = true;
@@ -179,6 +179,9 @@ int main()
 	OpenGLWindow window("OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
 	window.SetClearColor(0.0, 0.0, 0.0, 1.0f);
 	window.Clear();
+	window.SwapFramebuffer();
+	window.Clear();
+	window.SwapFramebuffer();
 
 	GLFullscreenImage glImage(SCREEN_WIDTH, SCREEN_HEIGHT);
 
