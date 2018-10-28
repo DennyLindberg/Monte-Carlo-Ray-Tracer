@@ -31,8 +31,8 @@ static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
-static const unsigned int RAY_TRACE_DEPTH = 100;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 100;
+static const unsigned int RAY_TRACE_DEPTH = 20;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1;
 static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
 
 static const bool APPLY_TONE_MAPPING = true;
@@ -224,8 +224,8 @@ int main()
 	/*
 		Initialize scene
 	*/
-	//CornellBoxScene scene{10.0f, 10.0f, 10.0f};
-	HexagonScene scene;
+	CornellBoxScene scene{10.0f, 10.0f, 10.0f};
+	//HexagonScene scene;
 	Camera camera = Camera{SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV};
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleSpheres();

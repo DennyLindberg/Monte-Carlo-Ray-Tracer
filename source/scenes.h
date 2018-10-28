@@ -77,8 +77,7 @@ public:
 
 		leftSphere->surfaceType = SurfaceType::Diffuse;
 		middleSphere->surfaceType = SurfaceType::Specular;
-		//rightSphere->surfaceType = SurfaceType::Refractive;
-		rightSphere->surfaceType = SurfaceType::Diffuse;
+		rightSphere->surfaceType = SurfaceType::Refractive;
 
 		leftSphere->radius = radius;
 		middleSphere->radius = radius;
@@ -104,8 +103,7 @@ public:
 		CubeObject* cube2 = CreateObject<CubeObject>();
 		cube2->SetGeometry({ -3.0, -5.0, 8.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, 5.0f-radius);
 		cube2->color = ColorDbl(0.8, 0.4, 0.01);
-		//cube2->surfaceType = SurfaceType::Refractive;
-		cube2->surfaceType = SurfaceType::Diffuse;
+		cube2->surfaceType = SurfaceType::Refractive;
 
 		// Cube2 - middle
 		CubeObject* cube3 = CreateObject<CubeObject>();

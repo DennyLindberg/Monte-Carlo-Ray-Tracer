@@ -527,48 +527,9 @@ public:
 		return ColorDbl{ 0.0f };
 	}
 
-	vec3 refract(const vec3 &I, const vec3 &N, const float &ior)
+	inline double MaxImportance(ColorDbl& importance)
 	{
-		// https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
-		float cosi = std::clamp(glm::dot(I, N), -1.0f, 1.0f);
-		float etai = 1.0f, etat = ior;
-		vec3 n = N;
-		if (cosi < 0.0f) { cosi = -cosi; }
-		else { std::swap(etai, etat); n = -N; }
-		float eta = etai / etat;
-		float k = 1.0f - eta * eta * (1.0f - cosi * cosi);
-
-		if (k < 0.0f)
-		{
-			return vec3(0.0f);
-		}
-		else
-		{
-			return eta * I + (eta * cosi - sqrtf(k)) * n;
-		}
-	}
-
-	void fresnel(const vec3 &I, const vec3 &N, const float &ior, float &kr)
-	{
-		// https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
-		float cosi = std::clamp(glm::dot(I, N), -1.0f, 1.0f);
-		float etai = 1.0f, etat = ior;
-		if (cosi > 0) { std::swap(etai, etat); }
-		// Compute sini using Snell's law
-		float sint = etai / etat * sqrtf(std::max(0.f, 1 - cosi * cosi));
-		// Total internal reflection
-		if (sint >= 1) {
-			kr = 1;
-		}
-		else {
-			float cost = sqrtf(std::max(0.f, 1 - sint * sint));
-			cosi = fabsf(cosi);
-			float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
-			float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
-			kr = (Rs * Rs + Rp * Rp) / 2;
-		}
-		// As a consequence of the conservation of energy, transmittance is given by:
-		// kt = 1 - kr;
+		return std::max(importance.x, std::max(importance.y, importance.z));
 	}
 
 	ColorDbl TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsigned int traceDepth = 5, ColorDbl importance = ColorDbl{ 1.0 })
@@ -637,7 +598,7 @@ public:
 
 			importance = importance * brdf / pdf;
 
-			double p = std::max(importance.x, std::max(importance.y, importance.z));
+			double p = MaxImportance(importance);
 			if (uniformGenerator.RandomDouble(0.0, 1.0) > p)
 			{
 				return importance * object.emission; // Russian roulette terminated the path
@@ -660,31 +621,58 @@ public:
 		}
 		else if (object.surfaceType == SurfaceType::Refractive)
 		{
-			// https://www.scratchapixel.com/code.php?id=13&origin=/lessons/3d-basic-rendering/introduction-to-shading
-			vec3 refractionColor{ 0.0f };
-			vec3 reflectionColor{ 0.0f };
+			vec3& I = ray.direction;
+			float n1 = 1.0f;	// air
+			float n2 = 1.52f;	// window glass
 
-			// compute fresnel
-			float n2 = 1.52f;
-			float kr;
-			fresnel(ray.direction, intersectionPoint, n2, kr);
+			// Ray aiming out of the material? (swap normal and coefficients to match ray direction)
+			if (glm::dot(normal, I) >= 0)
+			{
+				normal = normal * -1.0f;
+				std::swap(n1, n2);
+			}
+			vec3 errorMargin = normal * INTERSECTION_ERROR_MARGIN;
+			float n = n1 / n2;
 
-			bool outside = glm::dot(ray.direction, normal) < 0.0f;
-			vec3 bias = 1.0f * normal;
-
-			// compute refraction if it is not a case of total internal reflection
-			if (kr < 1.0f) {
-				vec3 refractionDirection = glm::normalize(refract(ray.direction, normal, n2));
-				vec3 refractionRayOrig = outside ? intersectionPoint - bias : intersectionPoint + bias;
-				refractionColor = TraceRay(Ray(refractionRayOrig, refractionDirection), uniformGenerator, traceDepth - 1, importance);
+			// Determine if the incoming angle is beyond the limit for total internal reflection
+			float cosI = glm::dot(I, normal);
+			float cos2t = 1.0f - n * n * (1.0f - cosI * cosI);
+			if (cos2t < 0.0f)
+			{
+				// Return total internal reflection
+				return importance * (object.emission + TraceRay(Ray{intersectionPoint+errorMargin, glm::reflect(I, normal) }, uniformGenerator, --traceDepth, importance));
 			}
 
-			vec3 reflectionDirection = glm::reflect(ray.direction, normal);
-			vec3 reflectionRayOrig = outside ? intersectionPoint + bias : intersectionPoint - bias;
-			reflectionColor = TraceRay(Ray(reflectionRayOrig, reflectionDirection), uniformGenerator, traceDepth - 1, importance);
+			// Use Schlick's approximation of the Fresnel equation to determine reflection and refraction contributions.
+			// R determines amount of reflection (1-R determines refraction)
+			vec3 tdir = I * n - normal * (cosI * n + sqrt(cos2t));
+			float R0 = (n2 - n1) / (n2 + n1);
+			R0 *= R0;
+			float c = 1.0f - (-cosI);
+			float R = R0 + (1 - R0) * c * c * c * c * c;
 
-			// mix the two
-			return reflectionColor * kr + refractionColor * (1 - kr);
+			// Use probability to determine if the ray is important enough to need a detailed contribution
+			if (uniformGenerator.RandomDouble() < MaxImportance(importance))
+			{
+				// Blend refraction and reflection
+				return TraceRay(Ray{intersectionPoint+errorMargin, glm::reflect(I, normal) }, uniformGenerator, traceDepth-1, importance*double(R))
+					   + TraceRay(Ray(intersectionPoint-errorMargin, tdir), uniformGenerator, traceDepth - 1, importance*double(1.0-R));
+			}
+			else
+			{
+				// Ray has a weak contribution, only calculate one of the paths
+				double P = .25 + .5 * R;
+				if (uniformGenerator.RandomDouble() > P)
+				{
+					importance *= R / P;
+					return TraceRay(Ray{intersectionPoint+errorMargin, glm::reflect(I, normal)}, uniformGenerator, --traceDepth, importance);
+				}
+				else
+				{
+					importance *= (1.0 - R) / (1.0 - P);
+					return TraceRay(Ray(intersectionPoint-errorMargin, tdir), uniformGenerator, --traceDepth, importance);
+				}
+			}
 		}
 
 		// Failed to get a color, return black
