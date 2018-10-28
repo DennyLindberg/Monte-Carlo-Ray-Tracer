@@ -90,12 +90,4 @@ project "Obj Loader"
     files ({source_folder .. "**.h", source_folder .. "**.c", source_folder .. "**.cpp"})
     removefiles{ source_folder .. "main*.cpp"}
     files ({source_folder .. "main_Obj.cpp"})
-
-project "Whitted Ray Tracing"
-   	kind "ConsoleApp"
-    targetdir(binaries_folder)
-    targetname("WhittedRayTracing")
-    files ({source_folder .. "**.h", source_folder .. "**.c", source_folder .. "**.cpp"})
-    removefiles{ source_folder .. "main*.cpp"}
-    files ({source_folder .. "main_Whitted.cpp"})
-	
+    

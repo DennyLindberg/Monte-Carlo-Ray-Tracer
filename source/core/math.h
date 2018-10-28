@@ -2,6 +2,7 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
 // M_PI definition borrowed from SDL
 #ifndef M_PI
@@ -25,6 +26,8 @@
 #endif
 
 #define FLOAT_INFINITY std::numeric_limits<float>::max()
+
+#define INTERSECTION_ERROR_MARGIN FLT_EPSILON*20.0f
 
 /*
 	Basic types
