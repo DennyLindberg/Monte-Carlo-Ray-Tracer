@@ -656,7 +656,7 @@ public:
 			intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
 			vec3 newDirection = glm::reflect(ray.direction, normal);
-			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, traceDepth, importance);
+			return object.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth, importance);
 		}
 		else if (object.surfaceType == SurfaceType::Refractive)
 		{
@@ -681,7 +681,7 @@ public:
 
 			vec3 reflectionDirection = glm::reflect(ray.direction, normal);
 			vec3 reflectionRayOrig = outside ? intersectionPoint + bias : intersectionPoint - bias;
-			reflectionColor = TraceRay(Ray(reflectionRayOrig, reflectionDirection), uniformGenerator, --traceDepth, importance);
+			reflectionColor = TraceRay(Ray(reflectionRayOrig, reflectionDirection), uniformGenerator, traceDepth - 1, importance);
 
 			// mix the two
 			return reflectionColor * kr + refractionColor * (1 - kr);

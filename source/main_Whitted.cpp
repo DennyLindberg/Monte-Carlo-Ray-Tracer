@@ -15,6 +15,7 @@
 #include "core.h"
 
 #include <thread>
+#include <atomic>
 
 UniformRandomGenerator uniformGenerator;
 
@@ -31,7 +32,7 @@ static const float CAMERA_FOV = 90.0f;
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
 static const unsigned int RAY_TRACE_DEPTH = 100;
-static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 1000;
+static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT? 1 : 100;
 static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
 
 static const bool APPLY_TONE_MAPPING = true;
@@ -39,67 +40,108 @@ static const bool USE_SIMPLE_TONE_MAPPER = true;
 static const double TONE_MAP_GAMMA = 2.2;
 static const double TONE_MAP_EXPOSURE = 1.0;
 
-static const bool USE_MULTITHREADING = true;
-typedef std::vector<std::thread> ThreadVector;
-const unsigned int NUM_SUPPORTED_THREADS = std::thread::hardware_concurrency();
-ThreadVector threads(NUM_SUPPORTED_THREADS);
 
+static const bool USE_MULTITHREADING = true;
 struct ThreadInfo
 {
 	unsigned int id = 0;
 	Camera* camera = nullptr;
 	Scene* scene = nullptr;
 	GLFullscreenImage* glImage = nullptr;
-	bool loop = false;
 	bool isDone = false;
 };
+const unsigned int NUM_SUPPORTED_THREADS = std::thread::hardware_concurrency();
+std::vector<std::thread> threads(NUM_SUPPORTED_THREADS);
 std::vector<ThreadInfo> threadInfos(NUM_SUPPORTED_THREADS);
 std::vector<UniformRandomGenerator> uniformGenerators(NUM_SUPPORTED_THREADS);
 
 /*
 	Main ray tracing function
 */
-inline void TraceSubPixels(unsigned int threadId, unsigned int x, unsigned int y, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
+std::atomic_uint threaded_currentPixelIndex = 0;
+inline bool GetNextPixelToRender(unsigned int& nextIndex, unsigned int& x, unsigned int& y, unsigned int threadId, PixelBuffer& buffer)
 {
-	// Each pixel will trace a certain number of random rays in random directions (subpixels)
-	unsigned int pixelIndex = camera.pixels.PixelArrayIndex(x, y);
-	int rayCount = RAY_COUNT_PER_PIXEL;
-	float sx = 0.0f;
-	float sy = 0.0f;
+	if constexpr (RAY_TRACE_RANDOM)
+	{
+		// Allow threads to work on the whole image concurrently.
+		// The likelyhood that two threads will write to the same pixel output is miniscule.
+		// -> Two threads get the same index at different times during computation
+		// -> Threads work with different rays and terminate randomly with Russian roulette
+		// -> Threads would then have to finish at the same time and access/write the same memory
+		// -> How miniscule is the chance for this to happen? Hit by lighting a thousand times the same day?
+		x = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
+		y = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_HEIGHT)));
+
+		x = std::min(x, SCREEN_WIDTH - 1);
+		y = std::min(y, SCREEN_HEIGHT - 1);
+
+		nextIndex = buffer.PixelArrayIndex(x, y);
+		return true;
+	}
+	else
+	{
+		// Threads will chase the next free pixel available.
+		nextIndex = threaded_currentPixelIndex++;
+		x = nextIndex % SCREEN_WIDTH;
+		y = nextIndex / SCREEN_WIDTH;
+
+		nextIndex *= 3;
+		return (int(nextIndex) < buffer.size());
+	}
+
+}
+
+bool RayTraceNextPixel(unsigned int threadId)
+{
+	ThreadInfo& thread = threadInfos[threadId];
+	unsigned int pixelIndex = 0;
+	unsigned int x = 0;
+	unsigned int y = 0;
+	
+	if (!GetNextPixelToRender(pixelIndex, x, y, thread.id, thread.camera->pixels))
+	{
+		return false;
+	}
+
+	Camera& camera = *thread.camera;
+	Scene& scene = *thread.scene;
+	GLFullscreenImage& glImage = *thread.glImage;
 
 	// Run trace for all rays
 	Ray cameraRay;
 	ColorDbl rayColor;
+	int rayCount = RAY_COUNT_PER_PIXEL;
+	float sx = 0.0f;
+	float sy = 0.0f;
 	while (--rayCount >= 0)
 	{
-		if constexpr(RAY_TRACE_UNLIT)
+		if constexpr (RAY_TRACE_UNLIT)
 		{
-			cameraRay = camera.GetPixelRay(x + 0.5f, y + 0.5f);
+			cameraRay = camera.GetPixelRay(float(x) + 0.5f, float(y) + 0.5f);
 		}
 		else
 		{
 			sx = uniformGenerator.RandomFloat();
 			sy = uniformGenerator.RandomFloat();
-			cameraRay = camera.GetPixelRay(x + sx, y + sy);
+			cameraRay = camera.GetPixelRay(float(x) + sx, float(y) + sy);
 		}
 
-
 		if constexpr (RAY_TRACE_UNLIT) rayColor = scene.TraceUnlit(cameraRay);
-		else						   rayColor = scene.TraceRay(cameraRay, uniformGenerators[threadId], RAY_TRACE_DEPTH);
-		
+		else						   rayColor = scene.TraceRay(cameraRay, uniformGenerators[thread.id], RAY_TRACE_DEPTH);
+
 		camera.pixels.AddRayColor(pixelIndex, rayColor);
 	}
 
 	// When done, normalize colors
 	ColorDbl outputColor = camera.pixels.GetPixelColor(x, y) / double(camera.pixels.GetRayCount(pixelIndex));
 
-	if constexpr(!APPLY_TONE_MAPPING)
+	if constexpr (!APPLY_TONE_MAPPING)
 	{
 		glImage.buffer.SetPixel(x, y, outputColor.r, outputColor.g, outputColor.b, 1.0);
 	}
 	else
 	{
-		if constexpr(USE_SIMPLE_TONE_MAPPER)
+		if constexpr (USE_SIMPLE_TONE_MAPPER)
 		{
 			// Reinhard Tone Mapping
 			outputColor = outputColor / (outputColor + ColorDbl(1.0));
@@ -111,69 +153,63 @@ inline void TraceSubPixels(unsigned int threadId, unsigned int x, unsigned int y
 			outputColor = ColorDbl(1.0) - glm::exp(-outputColor * TONE_MAP_EXPOSURE);
 			outputColor = pow(outputColor, ColorDbl(1.0 / TONE_MAP_GAMMA));
 		}
-	
+
 		glImage.buffer.SetPixel(x, y, outputColor.r, outputColor.g, outputColor.b, 1.0);
 	}
 
-}
-
-inline void Trace(unsigned int threadId, unsigned int yBegin, unsigned int yEnd, Camera& camera, Scene& scene, GLFullscreenImage& glImage)
-{
-	if constexpr (RAY_TRACE_RANDOM)
-	{
-		unsigned int x = (unsigned int)(uniformGenerator.RandomFloat(0.0f, float(SCREEN_WIDTH)));
-		unsigned int y = (unsigned int)(uniformGenerator.RandomFloat(float(yBegin), float(yEnd)));
-
-		x = std::min(x, SCREEN_WIDTH - 1);
-		y = std::min(y, yEnd - 1);
-
-		TraceSubPixels(threadId, x, y, camera, scene, glImage);
-	}
-	else
-	{
-		for (unsigned int y = yBegin; y < yEnd; ++y)
-		{
-			for (unsigned int x = 0; x < SCREEN_WIDTH; ++x)
-			{
-				TraceSubPixels(threadId, x, y, camera, scene, glImage);
-			}
-		}
-	}
-}
-
-void TraceThreaded(ThreadInfo& thread)
-{
-	unsigned int yStep = SCREEN_HEIGHT / NUM_SUPPORTED_THREADS;
-
-	unsigned int yBegin = yStep* thread.id;
-	unsigned int yEnd = yBegin + yStep;
-
-	if (thread.id == NUM_SUPPORTED_THREADS - 1)
-	{
-		yEnd = SCREEN_HEIGHT;
-	}
-
-	do
-	{
-		Trace(thread.id, yBegin, yEnd, *thread.camera, *thread.scene, *thread.glImage);
-	} while (thread.loop && !quit);
-
-	thread.isDone = true;
-}
-
-bool ThreadsAreDone(std::vector<ThreadInfo>& threads)
-{
-	// Don't include the main thread
-	for (unsigned int i=1; i<threads.size(); i++)
-	{
-		if (!threads[i].isDone)
-		{
-			return false;
-		}
-	}
 	return true;
 }
 
+bool TracePixels(unsigned int threadId = 0)
+{
+	if (threadId == 0)
+	{
+		// Don't loop the main thread
+		return RayTraceNextPixel(threadId);
+	}
+	else
+	{
+		// Extra threads continue to run independently
+		while (RayTraceNextPixel(threadId) && !quit) {}
+		threadInfos[threadId].isDone = true;
+
+		return true;
+	}
+}
+
+bool ThreadsAreDone()
+{
+	if constexpr (RAY_TRACE_RANDOM)
+	{
+		return false;
+	}
+	else if constexpr (USE_MULTITHREADING)
+	{
+		for (unsigned int i=0; i<threadInfos.size(); i++)
+		{
+			if (!threadInfos[i].isDone)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	else
+	{
+		return threadInfos[0].isDone;
+	}
+}
+
+std::string TimeString(float time) 
+{ 
+	int seconds = int(time);
+	int minutes = seconds / 60;
+	int hours = minutes / 60;
+	float decimals = time - float(seconds);
+
+	return std::to_string(hours) + "h " + std::to_string(minutes % 60) + "m " + std::to_string(seconds % 60) + "." + std::to_string(int(decimals*10.0f)) + "s";
+}
+std::string FpsString(float deltaTime) { return std::to_string(int(round(1.0f / deltaTime))); }
 int main()
 {
 	OpenGLWindow window("OpenGL", SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_FULLSCREEN, SCREEN_VSYNC);
@@ -201,60 +237,52 @@ int main()
 	/*
 		Application loop
 	*/
-	ApplicationClock clock;
-	float lastScreenUpdate = clock.Time();
+	for (unsigned int i = 0; i < NUM_SUPPORTED_THREADS; i++)
+	{
+		threadInfos[i] = { i, &camera, &scene, &glImage, false };
+	}
+
 	if (USE_MULTITHREADING)
 	{
-		for (unsigned int i = 0; i < NUM_SUPPORTED_THREADS; i++)
+		// Start all threads except the main one
+		for (unsigned int i = 1; i < NUM_SUPPORTED_THREADS; i++)
 		{
-			threadInfos[i] = { i, &camera, &scene, &glImage, RAY_TRACE_RANDOM, false };
-
-			// Additional threads are created from id=1 because id=0 is the main thread.
-			if (i > 0)
-			{
-				threads[i] = std::thread(TraceThreaded, threadInfos[i]);
-			}
+			threads[i] = std::thread(TracePixels, i);
 		}
 	}
 
-	unsigned int y = 0;
-	unsigned int mainThreadYMax = USE_MULTITHREADING ? SCREEN_HEIGHT / NUM_SUPPORTED_THREADS : SCREEN_HEIGHT;
-	bool mainThreadTracing = false;
+	ThreadInfo& mainThread = threadInfos[0];
+	ApplicationClock clock;
+	float lastScreenUpdate = clock.Time();
+	float screenUpdateDelta = 0.0f;
+	bool threadsAreDone = false;
 	while (!quit)
 	{
-		if constexpr (RAY_TRACE_RANDOM)
+		if (!threadsAreDone)
 		{
-			Trace(0, 0, mainThreadYMax, camera, scene, glImage);
-		}
-		else 
-		{
-			mainThreadTracing = y < mainThreadYMax;
-			if (mainThreadTracing)
+			if (!mainThread.isDone)
 			{
-				Trace(0, y, y + 1, camera, scene, glImage);
-				y++;
+				mainThread.isDone = !TracePixels();
 			}
-		}
 
-		clock.Tick();
-		if ((clock.Time() - lastScreenUpdate) >= SCREEN_UPDATE_DELAY)
-		{
-			if constexpr (!RAY_TRACE_RANDOM)
+			clock.Tick();
+			screenUpdateDelta = clock.Time() - lastScreenUpdate;
+
+			threadsAreDone = ThreadsAreDone();
+			if (threadsAreDone || (screenUpdateDelta >= SCREEN_UPDATE_DELAY))
 			{
-				if (mainThreadTracing && !ThreadsAreDone(threadInfos))
+				window.SetTitle("Time: " + TimeString(clock.Time()) + ", FPS: " + FpsString(screenUpdateDelta));
+				glImage.Draw();
+				window.SwapFramebuffer();
+				lastScreenUpdate = clock.Time();
+
+				if (threadsAreDone)
 				{
-					window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
+					std::cout << "\r\n\r\nRender finished at " + TimeString(clock.Time());
 				}
 			}
-			else
-			{
-				window.SetTitle("FPS: " + std::to_string(1 / clock.DeltaTime()) + " - Time: " + std::to_string(clock.Time()));
-			}
-
-			glImage.Draw();
-			window.SwapFramebuffer();
-			lastScreenUpdate = clock.Time();
 		}
+
 
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
