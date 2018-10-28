@@ -40,7 +40,8 @@ void Scene::CacheLights()
 	lights.clear();
 	for (Object* o : objects)
 	{
-		if (o->emission.r > 0.0 || o->emission.g > 0.0 || o->emission.b > 0.0)
+		Material& m = o->material;
+		if (m.emission.r > 0.0 || m.emission.g > 0.0 || m.emission.b > 0.0)
 		{
 			lights.push_back(o);
 		}
@@ -70,7 +71,8 @@ ColorDbl Scene::TraceUnlit(Ray ray) const
 	RayIntersectionInfo hitInfo;
 	if (IntersectRay(ray, hitInfo))
 	{
-		return ColorDbl(hitInfo.object->color.r, hitInfo.object->color.g, hitInfo.object->color.b);
+		Material& material = hitInfo.object->material;
+		return ColorDbl(material.color.r, material.color.g, material.color.b);
 	}
 
 	return ColorDbl{ 0.0f };
@@ -85,17 +87,18 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 	}
 
 	Object& object = *hitInfo.object;
-	ColorDbl surfaceColor = object.color;
+	Material& surface = object.material;
+	ColorDbl surfaceColor = surface.color;
 	vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
 	vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
 
 	if (traceDepth == 0 || object.IsLight())
 	{
-		return importance * object.emission;
+		return importance * surface.emission;
 	}
 
 	// Lambertian diffuse reflector
-	if (object.surfaceType == SurfaceType::Diffuse)
+	if (surface.type == SurfaceType::Diffuse)
 	{
 		intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
@@ -106,7 +109,6 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 		float distanceSq = 0.0;
 		float surfaceDot = 0.0f;
 		float lightDot = 0.0f;
-		double pdf;
 		for (Object* lightSource : lights)
 		{
 			subSampleContribution = ColorDbl{ 0.0f };
@@ -128,42 +130,38 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 					subSampleContribution += double(surfaceDot * lightDot / distanceSq);
 				}
 			}
-
-			pdf = 1.0 / (lightSource->area);
-			directLight += lightSource->emission / pdf * subSampleContribution / double(LIGHT_SUBSAMPLE_COUNT);
+			directLight += lightSource->material.emission / lightSource->PDF() * subSampleContribution / double(LIGHT_SUBSAMPLE_COUNT);
 		}
 
 		/*
 			Modify importance value
 		*/
-		double rho = 1.0;
-		ColorDbl brdf = surfaceColor * rho / M_PI;
-		pdf = 1.0 / (2.0 * M_PI);
-
-		importance = importance * brdf / pdf;
+		Ray bouncedRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, surfaceDot);
+		double hemispherePDF = 1.0 / (2.0 * M_PI);
+		double BRDF = surface.BRDF(ray.direction, bouncedRay.direction, normal);
+		importance = importance/hemispherePDF * surface.color*BRDF;
 
 		double p = MaxImportance(importance);
 		if (uniformGenerator.RandomDouble(0.0, 1.0) > p)
 		{
-			return importance * object.emission; // Russian roulette terminated the path
+			return importance * surface.emission; // Russian roulette terminated the path
 		}
 		importance *= 1.0 / p;
 
 		// Indirect lighting
-		Ray bouncedRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, surfaceDot);
 		ColorDbl indirectLight = TraceRay(bouncedRay, uniformGenerator, --traceDepth, importance);
 
 		// Return all light contribution
-		return importance * (object.emission + directLight + indirectLight);
+		return importance * (surface.emission + directLight + indirectLight);
 	}
-	else if (object.surfaceType == SurfaceType::Specular)
+	else if (surface.type == SurfaceType::Specular)
 	{
 		intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
 		vec3 newDirection = glm::reflect(ray.direction, normal);
-		return object.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth, importance);
+		return surface.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth, importance);
 	}
-	else if (object.surfaceType == SurfaceType::Refractive)
+	else if (surface.type == SurfaceType::Refractive)
 	{
 		vec3& I = ray.direction;
 		float n1 = 1.0f;	// air
@@ -184,7 +182,7 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 		if (cos2t < 0.0f)
 		{
 			// Return total internal reflection
-			return importance * (object.emission + TraceRay(Ray{ intersectionPoint + errorMargin, glm::reflect(I, normal) }, uniformGenerator, --traceDepth, importance));
+			return importance * (surface.emission + TraceRay(Ray{ intersectionPoint + errorMargin, glm::reflect(I, normal) }, uniformGenerator, --traceDepth, importance));
 		}
 
 		// Use Schlick's approximation of the Fresnel equation to determine reflection and refraction contributions.
@@ -237,11 +235,11 @@ HexagonScene::HexagonScene()
 	walls2 = CreateObject<TriangleMesh>();
 	walls3 = CreateObject<TriangleMesh>();
 
-	ceiling->color = ColorDbl(0.2);
-	floor->color = ColorDbl(0.2);
-	walls1->color = ColorDbl(0.2, 0.01, 0.01);
-	walls2->color = ColorDbl(0.01, 0.2, 0.01);
-	walls3->color = ColorDbl(0.2);
+	ceiling->material.color = ColorDbl(0.2);
+	floor->material.color = ColorDbl(0.2);
+	walls1->material.color = ColorDbl(0.2, 0.01, 0.01);
+	walls2->material.color = ColorDbl(0.01, 0.2, 0.01);
+	walls3->material.color = ColorDbl(0.2);
 
 	// Ceiling corners
 	//	   {  width, height, length }
@@ -286,9 +284,9 @@ void HexagonScene::AddExampleSpheres(float radius)
 	SphereObject* middleSphere = CreateObject<SphereObject>();
 	SphereObject* rightSphere = CreateObject<SphereObject>();
 
-	leftSphere->surfaceType = SurfaceType::Diffuse;
-	middleSphere->surfaceType = SurfaceType::Specular;
-	rightSphere->surfaceType = SurfaceType::Refractive;
+	leftSphere->material.type = SurfaceType::Diffuse;
+	middleSphere->material.type = SurfaceType::Specular;
+	rightSphere->material.type = SurfaceType::Refractive;
 
 	leftSphere->radius = radius;
 	middleSphere->radius = radius;
@@ -300,27 +298,27 @@ void HexagonScene::AddExampleSpheres(float radius)
 	middleSphere->position = vec3(-3.0f, 0.0, 8.0f);
 	rightSphere->position = vec3(1.0f, -3.0, 6.0f);
 
-	leftSphere->color = ColorDbl(0.5);
-	middleSphere->color = ColorDbl(0.5);
-	rightSphere->color = ColorDbl(0.5);
+	leftSphere->material.color = ColorDbl(0.5);
+	middleSphere->material.color = ColorDbl(0.5);
+	rightSphere->material.color = ColorDbl(0.5);
 
 	// box1
 	Box* box = CreateObject<Box>();
 	box->SetGeometry({ 3.0, -5.0, 10.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, 7.0f - radius);
-	box->color = ColorDbl(0.01, 0.3, 0.8);
-	box->surfaceType = SurfaceType::Diffuse;
+	box->material.color = ColorDbl(0.01, 0.3, 0.8);
+	box->material.type = SurfaceType::Diffuse;
 
 	// box2
 	Box* box2 = CreateObject<Box>();
 	box2->SetGeometry({ -3.0, -5.0, 8.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, 5.0f - radius);
-	box2->color = ColorDbl(0.8, 0.4, 0.01);
-	box2->surfaceType = SurfaceType::Refractive;
+	box2->material.color = ColorDbl(0.8, 0.4, 0.01);
+	box2->material.type = SurfaceType::Refractive;
 
 	// box2 - middle
 	Box* box3 = CreateObject<Box>();
 	box3->SetGeometry({ 1.0, -5.0, 6.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 4.0f, 4.0f, 2.0f - radius);
-	box3->color = ColorDbl(0.5, 0.2, 0.8);
-	box3->surfaceType = SurfaceType::Diffuse;
+	box3->material.color = ColorDbl(0.5, 0.2, 0.8);
+	box3->material.type = SurfaceType::Diffuse;
 }
 
 void HexagonScene::AddExampleLight(ColorDbl lightColor, bool usePoint)
@@ -331,8 +329,8 @@ void HexagonScene::AddExampleLight(ColorDbl lightColor, bool usePoint)
 	{
 		SphereObject* pointLight = CreateObject<SphereObject>();
 		pointLight->radius = 0.0f;
-		pointLight->color = lightColor;
-		pointLight->emission = lightColor;
+		pointLight->material.color = lightColor;
+		pointLight->material.emission = lightColor;
 		pointLight->position = roofCenter;
 	}
 	else
@@ -342,8 +340,8 @@ void HexagonScene::AddExampleLight(ColorDbl lightColor, bool usePoint)
 			{ 0.0f, -1.0f, 0.0f },	// direction
 			{ 1.0f, 0.0f, 0.0f },	// side
 			{ 1.0f, 1.0f });		// dimensions
-		light->color = lightColor;
-		light->emission = lightColor;
+		light->material.color = lightColor;
+		light->material.emission = lightColor;
 	}
 }
 
@@ -363,9 +361,9 @@ CornellBoxScene::CornellBoxScene(float length, float width, float height)
 	rightWall = CreateObject<TriangleMesh>();
 	whiteSegments = CreateObject<TriangleMesh>();
 
-	leftWall->color = ColorDbl(0.2, 0.01, 0.01);
-	rightWall->color = ColorDbl(0.01, 0.2, 0.01);
-	whiteSegments->color = ColorDbl(0.2);
+	leftWall->material.color = ColorDbl(0.2, 0.01, 0.01);
+	rightWall->material.color = ColorDbl(0.01, 0.2, 0.01);
+	whiteSegments->material.color = ColorDbl(0.2);
 
 	// Box corners
 	vec3 c1{ -halfWidth, halfHeight,  halfLength };
@@ -399,10 +397,10 @@ void CornellBoxScene::AddExampleSpheres(float radius)
 	SphereObject* rightSphere = CreateObject<SphereObject>();
 	SphereObject* airSphere = CreateObject<SphereObject>();
 
-	leftSphere->surfaceType = SurfaceType::Diffuse;
-	middleSphere->surfaceType = SurfaceType::Specular;
-	rightSphere->surfaceType = SurfaceType::Diffuse;
-	airSphere->surfaceType = SurfaceType::Diffuse;
+	leftSphere->material.type = SurfaceType::Diffuse;
+	middleSphere->material.type = SurfaceType::Diffuse;
+	rightSphere->material.type = SurfaceType::Diffuse;
+	airSphere->material.type = SurfaceType::Diffuse;
 
 	leftSphere->radius = radius;
 	middleSphere->radius = radius * 1.5f;
@@ -417,22 +415,22 @@ void CornellBoxScene::AddExampleSpheres(float radius)
 	rightSphere->position = vec3(widthOffset, 0.0f, -depthOffset / 2.0);
 	airSphere->position = vec3(0, heightOffset, -depthOffset);
 
-	leftSphere->color = ColorDbl(0.5);
-	middleSphere->color = ColorDbl(0.5);
-	rightSphere->color = ColorDbl(0.5);
-	airSphere->color = ColorDbl(0.5);
+	leftSphere->material.color = ColorDbl(0.5);
+	middleSphere->material.color = ColorDbl(0.5);
+	rightSphere->material.color = ColorDbl(0.5);
+	airSphere->material.color = ColorDbl(0.5);
 
 	// box1
 	Box* box = CreateObject<Box>();
 	box->SetGeometry({ halfWidth - 1.5f, -halfHeight, -depthOffset / 2.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight - radius);
-	box->color = ColorDbl(0.01, 0.3, 0.8);
-	box->surfaceType = SurfaceType::Diffuse;
+	box->material.color = ColorDbl(0.01, 0.3, 0.8);
+	box->material.type = SurfaceType::Diffuse;
 
 	// box2
 	Box* box2 = CreateObject<Box>();
 	box2->SetGeometry({ -halfWidth + 1.5f, -halfHeight, -depthOffset + 1.5f }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 1.5f, 1.5f, halfHeight + radius);
-	box2->color = ColorDbl(0.8, 0.4, 0.01);
-	box2->surfaceType = SurfaceType::Diffuse;
+	box2->material.color = ColorDbl(0.8, 0.4, 0.01);
+	box2->material.type= SurfaceType::Diffuse;
 }
 
 void CornellBoxScene::AddExampleLight(ColorDbl lightColor, bool usePoint)
@@ -443,8 +441,8 @@ void CornellBoxScene::AddExampleLight(ColorDbl lightColor, bool usePoint)
 	{
 		SphereObject* pointLight = CreateObject<SphereObject>();
 		pointLight->radius = 0.0f;
-		pointLight->color = lightColor;
-		pointLight->emission = lightColor;
+		pointLight->material.color = lightColor;
+		pointLight->material.emission = lightColor;
 		pointLight->position = roofCenter;
 	}
 	else
@@ -454,7 +452,7 @@ void CornellBoxScene::AddExampleLight(ColorDbl lightColor, bool usePoint)
 			{ 0.0f, -1.0f, 0.0f },						// direction
 			{ 1.0f, 0.0f, 0.0f },						// side
 			{ halfWidth / 3.0f, halfHeight / 3.0f });	// dimensions
-		light->color = lightColor;
-		light->emission = lightColor;
+		light->material.color = lightColor;
+		light->material.emission = lightColor;
 	}
 }

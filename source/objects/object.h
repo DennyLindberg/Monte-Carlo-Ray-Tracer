@@ -2,18 +2,14 @@
 #include "core/math.h"
 #include "core/ray.h"
 #include "core/randomization.h"
+#include "core/material.h"
 
-enum class SurfaceType { Diffuse, Specular, Diffuse_Specular, Refractive, COUNT };
-enum class DiffuseType { Lambertian, OrenNayar, COUNT };
-enum class LightSourceType { Point, Sphere, Rectangle, COUNT };
 
 class Object
 {
 public:
 	vec3 position;
-	ColorDbl color = ColorDbl{ 1.0f, 1.0f, 1.0f };
-	ColorDbl emission = ColorDbl{ 0.0f, 0.0f, 0.0f };
-	SurfaceType surfaceType = SurfaceType::Diffuse;
+	Material material;
 	float area = 1.0f;
 
 	Object() = default;
@@ -26,6 +22,8 @@ public:
 	{
 		return position;
 	}
+
+	virtual double PDF() { return 1.0 / area; }
 };
 
 class ImplicitObject : public Object

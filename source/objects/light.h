@@ -10,7 +10,7 @@ public:
 
 	Light(ColorDbl lightEmission = ColorDbl{ 1.0 })
 	{
-		emission = lightEmission;
+		material.emission = lightEmission;
 	}
 
 	~Light() = default;
@@ -47,4 +47,6 @@ public:
 		vec3 corner = position - xVector / 2.0f - yVector / 2.0f;
 		return corner + xVector * u + yVector * v;
 	}
+
+	virtual double PDF() override { return 1.0 / area; }
 };

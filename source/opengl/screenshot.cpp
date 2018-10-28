@@ -69,4 +69,8 @@ void TakeScreenshot(std::string filename, unsigned int screenWidth, unsigned int
 	{
 		std::cout << "encoder error " << error << ": " << lodepng_error_text(error) << std::endl;
 	}
+	else
+	{
+		std::cout << "Screenshot saved to " + filename + "\r\n";
+	}
 }
