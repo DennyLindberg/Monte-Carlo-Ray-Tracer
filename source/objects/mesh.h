@@ -13,8 +13,14 @@ public:
 
 	virtual bool Intersects(vec3 rayOrigin, vec3 rayDirection, RayIntersectionInfo& hitInfo)
 	{
+		float hitDistance = FLOAT_INFINITY;
+		if (!aabb.IntersectsRay(rayOrigin, rayDirection, hitDistance))
+		{
+			hitInfo.Reset();
+			return false;
+		}
+
 		int elementIndex = 0;
-		float hitDistance = 0.0f;
 		float nearestDistance = FLOAT_INFINITY;
 		for (unsigned int index = 0; index < triangles.size(); ++index)
 		{
@@ -49,5 +55,20 @@ public:
 	{
 		triangles.push_back(Triangle{ p1, p2, p3 });
 		triangles.push_back(Triangle{ p3, p4, p1 });
+	}
+
+	virtual void UpdateAABB()
+	{
+		if (triangles.size() > 0)
+		{
+			aabb = AABB(position, vec3{ 0.0f });
+
+			for (Triangle& t : triangles)
+			{
+				aabb.Encapsulate(t.vertex0);
+				aabb.Encapsulate(t.vertex1);
+				aabb.Encapsulate(t.vertex2);
+			}
+		}
 	}
 };

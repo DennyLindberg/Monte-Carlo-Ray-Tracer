@@ -35,8 +35,9 @@ Scene::~Scene()
 	// do not delete lights, they are duplicates of objects which are emissive
 }
 
-void Scene::CacheLights()
+void Scene::PrepareForRayTracing()
 {
+	// Cache lights
 	lights.clear();
 	for (Object* o : objects)
 	{
@@ -46,10 +47,22 @@ void Scene::CacheLights()
 			lights.push_back(o);
 		}
 	}
+
+	// Update AABBs
+	for (Object* o : objects)
+	{
+		o->UpdateAABB();
+	}
+
+	// Generate Octree
+	octree.Fill(objects);
 }
+
 
 bool Scene::IntersectRay(Ray& ray, RayIntersectionInfo& hitInfo) const
 {
+	//return octree.Intersect(ray, hitInfo);
+
 	hitInfo.object = nullptr;
 	hitInfo.elementIndex = 0;
 	hitInfo.hitDistance = FLOAT_INFINITY;

@@ -3,7 +3,7 @@
 #include "core/ray.h"
 #include "core/randomization.h"
 #include "core/material.h"
-
+#include "core/aabb.h"
 
 class Object
 {
@@ -11,6 +11,7 @@ public:
 	vec3 position;
 	Material material;
 	float area = 1.0f;
+	AABB aabb;
 
 	Object() = default;
 	~Object() = default;
@@ -24,6 +25,7 @@ public:
 	}
 
 	virtual double PDF() { return 1.0 / area; }
+	virtual void UpdateAABB() {}
 };
 
 class ImplicitObject : public Object

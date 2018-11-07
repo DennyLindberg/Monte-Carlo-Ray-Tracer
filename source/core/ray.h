@@ -18,12 +18,12 @@ struct RayIntersectionInfo
 {
 	class Object* object = nullptr;
 	unsigned int elementIndex = 0;
-	float hitDistance = 0.0f;
+	float hitDistance = FLOAT_INFINITY;
 
 	void Reset()
 	{
 		object = nullptr;
 		elementIndex = 0;
-		hitDistance = 0.0f;
+		hitDistance = FLOAT_INFINITY;
 	}
 };

@@ -9,6 +9,7 @@ Copyright Denny Lindberg and Molly Middagsfjell 2018
 #include "core/camera.h"
 #include "objects/object.h"
 #include "objects/mesh.h"
+#include "accelerationstructures/octree.h"
 #include <algorithm>
 
 
@@ -21,6 +22,7 @@ protected:
 	struct Ray RandomHemisphereRay(vec3& origin, vec3& incomingDirection, vec3& surfaceNormal, UniformRandomGenerator& gen, float& cosTheta);
 
 public:
+	Octree octree;
 	ColorDbl backgroundColor = { 0.0f, 0.0f, 0.0f };
 	unsigned int LIGHT_SUBSAMPLE_COUNT = 32;
 
@@ -35,7 +37,7 @@ public:
 		return newObject;
 	}
 
-	void CacheLights();
+	void PrepareForRayTracing();
 
 	bool IntersectRay(Ray& ray, RayIntersectionInfo& hitInfo) const;
 

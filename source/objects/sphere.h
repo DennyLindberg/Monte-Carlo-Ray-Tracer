@@ -63,4 +63,9 @@ public:
 		float z = position.z + (radius * cos(phi));
 		return vec3(x, y, z);
 	}
+
+	virtual void UpdateAABB() 
+	{
+		aabb = AABB(position, vec3{ radius });
+	}
 };
