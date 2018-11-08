@@ -177,8 +177,8 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 	else if (surface.type == SurfaceType::Refractive)
 	{
 		vec3& I = ray.direction;
-		float n1 = 1.0f;	// air
-		float n2 = 1.52f;	// window glass
+		float n1 = 1.0f;					// air
+		float n2 = surface.refractiveIndex;
 
 		// Ray aiming out of the material? (swap normal and coefficients to match ray direction)
 		if (glm::dot(normal, I) >= 0)
@@ -217,7 +217,7 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 		{
 			// Ray has a weak contribution, only calculate one of the paths
 			double P = .25 + .5 * R;
-			if (uniformGenerator.RandomDouble() > P)
+			if (uniformGenerator.RandomDouble() < P)
 			{
 				importance *= R / P;
 				return TraceRay(Ray{ intersectionPoint + errorMargin, glm::reflect(I, normal) }, uniformGenerator, --traceDepth, importance);
@@ -301,6 +301,7 @@ void HexagonScene::AddExampleSpheres(float radius)
 	middleSphere->material.type = SurfaceType::Specular;
 	rightSphere->material.type = SurfaceType::Refractive;
 
+
 	leftSphere->radius = radius;
 	middleSphere->radius = radius;
 	rightSphere->radius = radius;
@@ -332,6 +333,13 @@ void HexagonScene::AddExampleSpheres(float radius)
 	box3->SetGeometry({ 1.0, -5.0, 6.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 4.0f, 4.0f, 2.0f - radius);
 	box3->material.color = ColorDbl(0.5, 0.2, 0.8);
 	box3->material.type = SurfaceType::Diffuse;
+
+	// 1.15 = unknown 
+	// 1.31 = ice
+	// 1.52 = window glass 
+	// 2.417 = diamond
+	rightSphere->material.refractiveIndex = 1.52f;
+	box2->material.refractiveIndex = 1.52f;
 }
 
 void HexagonScene::AddExampleLight(ColorDbl lightColor, bool usePoint)
@@ -405,45 +413,62 @@ void CornellBoxScene::MoveCameraToRecommendedPosition(Camera& camera)
 
 void CornellBoxScene::AddExampleSpheres(float radius)
 {
-	SphereObject* leftSphere = CreateObject<SphereObject>();
-	SphereObject* middleSphere = CreateObject<SphereObject>();
-	SphereObject* rightSphere = CreateObject<SphereObject>();
-	SphereObject* airSphere = CreateObject<SphereObject>();
+	SphereObject* lambertianSphere = CreateObject<SphereObject>();
+	SphereObject* specularSphere = CreateObject<SphereObject>();
+	SphereObject* orenNayarSphere = CreateObject<SphereObject>();
+	SphereObject* refractionSphere = CreateObject<SphereObject>();
 
-	leftSphere->material.type = SurfaceType::Diffuse;
-	middleSphere->material.type = SurfaceType::Diffuse;
-	rightSphere->material.type = SurfaceType::Diffuse;
-	airSphere->material.type = SurfaceType::Diffuse;
-
-	leftSphere->radius = radius;
-	middleSphere->radius = radius * 1.5f;
-	rightSphere->radius = radius;
-	airSphere->radius = radius;
+	lambertianSphere->radius = radius;
+	specularSphere->radius = radius;
+	orenNayarSphere->radius = radius;
+	refractionSphere->radius = radius;
 
 	float widthOffset = halfWidth - radius;
 	float depthOffset = halfLength - radius;
 	float heightOffset = halfHeight - radius;
-	leftSphere->position = vec3(-widthOffset, -heightOffset, 0.0f);
-	middleSphere->position = vec3(0, -halfHeight + middleSphere->radius, -halfLength + middleSphere->radius);
-	rightSphere->position = vec3(widthOffset, 0.0f, -depthOffset / 2.0);
-	airSphere->position = vec3(0, heightOffset, -depthOffset);
+	lambertianSphere->position = vec3(-widthOffset, 0.0f, -depthOffset / 2.0);
+	specularSphere->position = vec3(0, 2.0, -halfLength + specularSphere->radius);
+	orenNayarSphere->position = vec3(widthOffset, 0.0f, -depthOffset / 2.0);
+	refractionSphere->position = vec3(0, -halfHeight + refractionSphere->radius + 1.5, -2);
 
-	leftSphere->material.color = ColorDbl(0.5);
-	middleSphere->material.color = ColorDbl(0.5);
-	rightSphere->material.color = ColorDbl(0.5);
-	airSphere->material.color = ColorDbl(0.5);
+	lambertianSphere->material.color = ColorDbl(0.5);
+	specularSphere->material.color = ColorDbl(0.5);
+	orenNayarSphere->material.color = ColorDbl(0.5);
+	refractionSphere->material.color = ColorDbl(0.5);
 
-	// box1
-	Box* box = CreateObject<Box>();
-	box->SetGeometry({ halfWidth - 1.5f, -halfHeight, -depthOffset / 2.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight - radius);
-	box->material.color = ColorDbl(0.01, 0.3, 0.8);
-	box->material.type = SurfaceType::Diffuse;
+	// Left box
+	Box* lambertianBox = CreateObject<Box>();
+	lambertianBox->SetGeometry({ halfWidth - 1.5f, -halfHeight, -depthOffset / 2.0 }, { 0.0f, 1.0f, 0.0f }, { -0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight - radius);
+	lambertianBox->material.color = ColorDbl(0.01, 0.3, 0.8);
 
-	// box2
-	Box* box2 = CreateObject<Box>();
-	box2->SetGeometry({ -halfWidth + 1.5f, -halfHeight, -depthOffset + 1.5f }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 1.5f, 1.5f, halfHeight + radius);
-	box2->material.color = ColorDbl(0.8, 0.4, 0.01);
-	box2->material.type= SurfaceType::Diffuse;
+	// Right box
+	Box* orenNayarBox = CreateObject<Box>();
+	orenNayarBox->SetGeometry({ -halfWidth + 1.5f, -halfHeight, -depthOffset / 2.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight - radius);
+	orenNayarBox->material.color = ColorDbl(0.8, 0.4, 0.01);
+
+	// Center box
+	Box* middleBox = CreateObject<Box>();
+	middleBox->SetGeometry({ 0, -halfHeight, -3 }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f, 1.0f }, 4.0f, 4.0f, halfHeight - refractionSphere->radius - 2.3f);
+	middleBox->material.color = ColorDbl(0.5, 0.2, 0.8);
+
+	// Set surface types
+	lambertianSphere->material.type = SurfaceType::Diffuse;
+	orenNayarSphere->material.type = SurfaceType::Diffuse;
+	lambertianBox->material.type = SurfaceType::Diffuse;
+	orenNayarBox->material.type = SurfaceType::Diffuse;
+	middleBox->material.type = SurfaceType::Diffuse;
+
+	middleBox->material.diffuse = DiffuseType::Lambertian;
+	lambertianBox->material.diffuse = DiffuseType::Lambertian;
+	lambertianSphere->material.diffuse = DiffuseType::Lambertian;
+	orenNayarBox->material.diffuse = DiffuseType::OrenNayar;
+	orenNayarSphere->material.diffuse = DiffuseType::OrenNayar;
+
+	specularSphere->material.type = SurfaceType::Specular;
+	refractionSphere->material.type = SurfaceType::Refractive;
+
+	orenNayarSphere->material.roughness = 0.5f;
+	orenNayarBox->material.roughness = 0.5f;
 }
 
 void CornellBoxScene::AddExampleLight(ColorDbl lightColor, bool usePoint)

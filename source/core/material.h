@@ -12,6 +12,7 @@ struct Material
 	DiffuseType diffuse = DiffuseType::Lambertian;
 	float albedo = 1.0f;
 	float roughness = 1.0f;
+	float refractiveIndex = 1.52f; // window glass
 
 	double BRDF(vec3& incident, vec3& reflection, vec3& normal)
 	{

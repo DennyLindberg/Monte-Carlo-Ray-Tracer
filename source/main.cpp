@@ -31,15 +31,15 @@ bool quit = false;
 
 static const bool SCREEN_VSYNC = false;
 static const unsigned int SCREEN_FULLSCREEN = 0;
-static const unsigned int SCREEN_WIDTH = 320;
-static const unsigned int SCREEN_HEIGHT = 240;
+static const unsigned int SCREEN_WIDTH = 640;
+static const unsigned int SCREEN_HEIGHT = 480;
 static const float SCREEN_UPDATE_DELAY = 0.1f;
 
 static const float CAMERA_FOV = 90.0f;
 
 static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
-static const unsigned int RAY_TRACE_DEPTH = 20;
+static const unsigned int RAY_TRACE_DEPTH = 100;
 static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT ? 1 : 1;
 static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
 
@@ -235,8 +235,8 @@ int main()
 	*/
 	Camera camera = Camera{ SCREEN_WIDTH, SCREEN_HEIGHT, CAMERA_FOV };
 
-	//CornellBoxScene scene{ 10.0f, 10.0f, 10.0f };
-	HexagonScene scene;
+	//HexagonScene scene;
+	CornellBoxScene scene{ 10.0f, 10.0f, 10.0f };
 	scene.backgroundColor = { 0.0f, 0.0f, 0.0f };
 	scene.LIGHT_SUBSAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;
 	scene.MoveCameraToRecommendedPosition(camera);
