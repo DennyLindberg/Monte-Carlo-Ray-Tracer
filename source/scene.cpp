@@ -291,7 +291,7 @@ void HexagonScene::MoveCameraToRecommendedPosition(Camera& camera)
 	camera.SetView(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 10.0f), vec3(0.0f, 1.0f, 0.0f));
 }
 
-void HexagonScene::AddExampleSpheres(float radius)
+void HexagonScene::AddExampleObjects(float radius)
 {
 	SphereObject* leftSphere = CreateObject<SphereObject>();
 	SphereObject* middleSphere = CreateObject<SphereObject>();
@@ -411,7 +411,7 @@ void CornellBoxScene::MoveCameraToRecommendedPosition(Camera& camera)
 	camera.SetView(vec3(0.0f, 0.0f, halfLength), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 }
 
-void CornellBoxScene::AddExampleSpheres(float radius)
+void CornellBoxScene::AddExampleObjects(float radius)
 {
 	SphereObject* lambertianSphere = CreateObject<SphereObject>();
 	SphereObject* specularSphere = CreateObject<SphereObject>();
@@ -469,6 +469,12 @@ void CornellBoxScene::AddExampleSpheres(float radius)
 
 	orenNayarSphere->material.roughness = 0.5f;
 	orenNayarBox->material.roughness = 0.5f;
+
+	// Test load mesh
+	//TriangleMesh* mesh = CreateObject<TriangleMesh>();
+	//mesh->position = vec3(0, 0, 0.0);
+	//mesh->material.type = SurfaceType::Diffuse;
+	//mesh->LoadMesh("box_stack.obj");
 }
 
 void CornellBoxScene::AddExampleLight(ColorDbl lightColor, bool usePoint)

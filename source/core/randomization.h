@@ -1,3 +1,7 @@
+/*
+	Copyright Denny Lindberg and Molly Middagsfjell 2018
+*/
+
 #pragma once
 #include <stdint.h>
 
@@ -23,7 +27,6 @@ protected:
 			uint64_t i; 
 			double d; 
 		} u = { 0x3FFull << 52 | x >> 12 };
-		//} u = { UINT64_C(0x3FF) << 52 | x >> 12 };
 
 		return u.d - 1.0;
 	}

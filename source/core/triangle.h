@@ -1,9 +1,9 @@
 /*
-Copyright Denny Lindberg and Molly Middagsfjell 2018
+	Copyright Denny Lindberg and Molly Middagsfjell 2018
 */
 
 #pragma once
-#include "core/math.h"
+#include "../core/math.h"
 
 struct Triangle
 {

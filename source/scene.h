@@ -68,7 +68,7 @@ public:
 	~HexagonScene() = default;
 
 	virtual void MoveCameraToRecommendedPosition(Camera& camera);
-	void AddExampleSpheres(float radius = 1.5f);
+	void AddExampleObjects(float radius = 1.5f);
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false);
 };
 
@@ -88,6 +88,6 @@ public:
 	~CornellBoxScene() = default;
 
 	virtual void MoveCameraToRecommendedPosition(Camera& camera);
-	void AddExampleSpheres(float radius = 1.5f);
+	void AddExampleObjects(float radius = 1.5f);
 	void AddExampleLight(ColorDbl lightColor, bool usePoint = false);
 };

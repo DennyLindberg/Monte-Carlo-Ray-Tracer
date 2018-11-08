@@ -1,3 +1,7 @@
+/*
+	Copyright Denny Lindberg and Molly Middagsfjell 2018
+*/
+
 #include "randomization.h"
 #include <random>
 

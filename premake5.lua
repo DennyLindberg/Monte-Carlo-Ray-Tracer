@@ -83,11 +83,3 @@ project "Main Application"
     removefiles{ source_folder .. "main*.cpp"}
     files ({source_folder .. "main.cpp"})
     
-project "Obj Loader"
-   	kind "ConsoleApp"
-    targetdir(binaries_folder)
-    targetname("ObjLoader")
-    files ({source_folder .. "**.h", source_folder .. "**.c", source_folder .. "**.cpp"})
-    removefiles{ source_folder .. "main*.cpp"}
-    files ({source_folder .. "main_Obj.cpp"})
-    

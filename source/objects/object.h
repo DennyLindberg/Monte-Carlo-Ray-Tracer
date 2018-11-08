@@ -1,9 +1,13 @@
+/*
+	Copyright Denny Lindberg and Molly Middagsfjell 2018
+*/
+
 #pragma once
-#include "core/math.h"
-#include "core/ray.h"
-#include "core/randomization.h"
-#include "core/material.h"
-#include "core/aabb.h"
+#include "../core/math.h"
+#include "../core/ray.h"
+#include "../core/randomization.h"
+#include "../core/material.h"
+#include "../core/aabb.h"
 
 class Object
 {

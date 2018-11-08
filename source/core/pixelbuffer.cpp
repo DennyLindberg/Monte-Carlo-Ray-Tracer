@@ -1,3 +1,7 @@
+/*
+	Copyright Denny Lindberg and Molly Middagsfjell 2018
+*/
+
 #include "pixelbuffer.h"
 
 PixelBuffer::PixelBuffer(unsigned int width, unsigned int height)

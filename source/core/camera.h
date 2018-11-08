@@ -1,3 +1,7 @@
+/*
+	Copyright Denny Lindberg and Molly Middagsfjell 2018
+*/
+
 #pragma once
 #include "pixelbuffer.h"
 #include "../core/ray.h"

@@ -1,5 +1,5 @@
 /*
-	Monte Carlo Ray Tracer implemented for the course TNCG15: Advanced Global Illumination and Rendering
+	Monte Carlo Path Tracer implemented for the course TNCG15: Advanced Global Illumination and Rendering
 
 	Copyright Denny Lindberg and Molly Middagsfjell 2018
 */
@@ -22,7 +22,6 @@
 #include "opengl/screenshot.h"
 #include "helpers/clock.h"
 #include "scene.h"
-#include "helpers/OBJ_Loader.h"
 #include "core/randomization.h"
 
 UniformRandomGenerator uniformGenerator;
@@ -240,10 +239,11 @@ int main()
 	scene.backgroundColor = { 0.0f, 0.0f, 0.0f };
 	scene.LIGHT_SUBSAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;
 	scene.MoveCameraToRecommendedPosition(camera);
-	scene.AddExampleSpheres();
+	scene.AddExampleObjects();
 	scene.AddExampleLight(ColorDbl{ 100.0f });
 	scene.PrepareForRayTracing();
 	//scene.octree.PrintDebug();
+
 
 
 	/*
