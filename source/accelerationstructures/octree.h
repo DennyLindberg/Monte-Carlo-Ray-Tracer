@@ -75,7 +75,7 @@ public:
 		Clear();
 
 		maxCount = maxCountPerSubdivision;
-		objects = std::vector(newObjects.begin(), newObjects.end());
+		objects = std::vector<Object*>(newObjects.begin(), newObjects.end());
 		for (Object* object : objects)
 		{
 			aabb.Encapsulate(object->aabb);

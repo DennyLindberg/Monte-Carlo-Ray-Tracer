@@ -10,8 +10,8 @@ struct Material
 	ColorDbl emission = ColorDbl{ 0.0f, 0.0f, 0.0f };
 	SurfaceType type = SurfaceType::Diffuse;
 	DiffuseType diffuse = DiffuseType::Lambertian;
-	float albedo = 1.0;
-	float roughness = 1.0;
+	float albedo = 1.0f;
+	float roughness = 1.0f;
 
 	double BRDF(vec3& incident, vec3& reflection, vec3& normal)
 	{
