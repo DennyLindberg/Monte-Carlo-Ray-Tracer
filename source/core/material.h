@@ -18,6 +18,9 @@ struct Material
 	float roughness = 1.0f;
 	float refractiveIndex = 1.52f; // window glass
 
+	// The PI was removed for optimization.
+	// The 1/PI here was multiplied by PI from the hemisphere PDF in the scene tracer.
+	// BRDF/PDF = (albedo/PI) / (1/(2.0*PI)) = albedo*2.0
 	double BRDF(vec3& incident, vec3& reflection, vec3& normal)
 	{
 		switch (diffuse)
@@ -39,11 +42,11 @@ struct Material
 			float beta = glm::min(theta_out, theta_in);
 
 			double ON = (A + (B * glm::max(0.0f, cos_in_out)) * glm::sin(alpha) * glm::tan(beta));
-			return albedo / M_PI * ON;
+			return albedo * ON;
 		}
 		case DiffuseType::Lambertian: 
 		default:
-			return albedo / M_PI;
+			return albedo;
 		}
 
 		return 1.0;

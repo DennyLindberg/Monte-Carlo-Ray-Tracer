@@ -40,13 +40,12 @@ static const bool RAY_TRACE_UNLIT = false;
 static const bool RAY_TRACE_RANDOM = true;
 static const unsigned int RAY_TRACE_DEPTH = 100;
 static const unsigned int RAY_COUNT_PER_PIXEL = RAY_TRACE_UNLIT ? 1 : 1;
-static const unsigned int RAY_TRACE_LIGHT_SAMPLE_COUNT = 1;
+static const float LIGHT_STRENGTH = 10.0f;
 
 static const bool APPLY_TONE_MAPPING = true;
 static const bool USE_SIMPLE_TONE_MAPPER = true;
 static const double TONE_MAP_GAMMA = 2.2;
 static const double TONE_MAP_EXPOSURE = 1.0;
-
 
 static const bool USE_MULTITHREADING = true;
 struct ThreadInfo
@@ -237,10 +236,9 @@ int main()
 	//HexagonScene scene;
 	CornellBoxScene scene{ 10.0f, 10.0f, 10.0f };
 	scene.backgroundColor = { 0.0f, 0.0f, 0.0f };
-	scene.LIGHT_SUBSAMPLE_COUNT = RAY_TRACE_LIGHT_SAMPLE_COUNT;
 	scene.MoveCameraToRecommendedPosition(camera);
 	scene.AddExampleObjects();
-	scene.AddExampleLight(ColorDbl{ 100.0f });
+	scene.AddExampleLight(ColorDbl{ LIGHT_STRENGTH });
 	scene.PrepareForRayTracing();
 	//scene.octree.PrintDebug();
 
@@ -290,6 +288,9 @@ int main()
 
 				if (threadsAreDone)
 				{
+					// Draw one extra time so that both frame buffers contain the same result. (screenshot might act up otherwise)
+					glImage.Draw();
+					window.SwapFramebuffer();
 					std::cout << "\r\n\r\nRender finished at " + TimeString(clock.Time()) + "\r\n";
 				}
 			}

@@ -100,79 +100,78 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 	}
 
 	Object& object = *hitInfo.object;
-	Material& surface = object.material;
-	ColorDbl surfaceColor = surface.color;
-	vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
-	vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
-
 	if (traceDepth == 0 || object.IsLight())
 	{
-		return importance * surface.emission;
+		// Note that this method "cheats" and only allows explicit light sources to emit light.
+		return importance * object.material.emission;
 	}
 
 	// Lambertian diffuse reflector
+	Material& surface = object.material;
+	vec3 intersectionPoint = ray.origin + ray.direction * hitInfo.hitDistance;
+	vec3 normal = object.GetSurfaceNormal(intersectionPoint, hitInfo.elementIndex);
 	if (surface.type == SurfaceType::Diffuse)
 	{
 		intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
-		ColorDbl subSampleContribution{ 0.0f };
+		/*
+			Direct light contribution
+		*/
 		ColorDbl directLight{ 0.0f };
 		vec3 lightDirection;
 		RayIntersectionInfo hitInfo;
 		float distanceSq = 0.0;
 		float surfaceDot = 0.0f;
 		float lightDot = 0.0f;
+		double BRDF = 0.0;
 		for (Object* lightSource : lights)
 		{
-			subSampleContribution = ColorDbl{ 0.0f };
-			for (unsigned int sample = 0; sample < LIGHT_SUBSAMPLE_COUNT; ++sample)
+			lightDirection = lightSource->GetRandomPointOnSurface(uniformGenerator) - intersectionPoint;
+			lightDirection = glm::normalize(lightDirection);
+
+			// Shadow ray attempt (either a clear path (no collision) or the light is reached)
+			Ray shadowRay = Ray(intersectionPoint, lightDirection);
+			if (!IntersectRay(shadowRay, hitInfo) || (hitInfo.object == lightSource))
 			{
-				lightDirection = lightSource->GetRandomPointOnSurface(uniformGenerator) - intersectionPoint;
-				distanceSq = std::max(1.0f, glm::dot(lightDirection, lightDirection));
-				lightDirection = glm::normalize(lightDirection);
+				surfaceDot = glm::dot(normal, lightDirection);
+				lightDot = glm::dot(vec3(0.0f, -1.0f, 0.0f), lightDirection*-1.0f);	
+				BRDF = surface.BRDF(ray.direction, shadowRay.direction, normal);
 
-				// Shadow ray attempt (either a clear path (no collision) or the light is reached)
-				Ray shadowRay = Ray(intersectionPoint, lightDirection);
-				if (!IntersectRay(shadowRay, hitInfo) || (hitInfo.object == lightSource))
-				{
-					surfaceDot = std::max(0.0f, glm::dot(normal, lightDirection));
-					lightDot = std::max(0.0f, glm::dot(vec3(0.0f, -1.0f, 0.0f), lightDirection*-1.0f));
-
-					// Each subsample has the same multiplication of lightEmission / pdf,
-					// it has therefore been moved outside the inner loop to be multiplied only once.
-					subSampleContribution += double(surfaceDot * lightDot / distanceSq);
-				}
+				directLight += lightSource->material.emission * double(BRDF * surfaceDot * lightDot);
 			}
-			directLight += lightSource->material.emission / lightSource->PDF() * subSampleContribution / double(LIGHT_SUBSAMPLE_COUNT);
 		}
 
 		/*
-			Modify importance value
+			Determine if ray should terminate using russian roulette.
 		*/
-		Ray bouncedRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, surfaceDot);
-		double hemispherePDF = 1.0 / (2.0 * M_PI);
-		double BRDF = surface.BRDF(ray.direction, bouncedRay.direction, normal);
-		importance = importance/hemispherePDF * surface.color*BRDF;
-
 		double p = MaxImportance(importance);
+		importance *= surface.color;
+		directLight *= importance;
 		if (uniformGenerator.RandomDouble(0.0, 1.0) > p)
 		{
-			return importance * surface.emission; // Russian roulette terminated the path
+			return directLight;
 		}
-		importance *= 1.0 / p;
+		importance /= p;
 
-		// Indirect lighting
+		/*
+			Indirect light (if ray did not terminate)
+
+			Importance should actually be divided by the hemispherePDF = 1/(2.0*PI).
+			That has been optimized away so that only the 2.0 remains as a multiplication.
+			(the PI disappeared because: BRDF/PDF = (albedo/PI) / (1/(2.0*PI)) = albedo*2.0)
+		*/
+		Ray bouncedRay = RandomHemisphereRay(intersectionPoint, ray.direction, normal, uniformGenerator, surfaceDot);
+		importance *= 2.0 * double(surfaceDot) * surface.BRDF(ray.direction, bouncedRay.direction, normal);
 		ColorDbl indirectLight = TraceRay(bouncedRay, uniformGenerator, --traceDepth, importance);
 
-		// Return all light contribution
-		return importance * (surface.emission + directLight + indirectLight);
+		return directLight + indirectLight;
 	}
 	else if (surface.type == SurfaceType::Specular)
 	{
 		intersectionPoint += normal * INTERSECTION_ERROR_MARGIN;
 
 		vec3 newDirection = glm::reflect(ray.direction, normal);
-		return surface.emission + TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth, importance);
+		return TraceRay(Ray(intersectionPoint, newDirection), uniformGenerator, --traceDepth, importance);
 	}
 	else if (surface.type == SurfaceType::Refractive)
 	{
@@ -195,7 +194,7 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 		if (cos2t < 0.0f)
 		{
 			// Return total internal reflection
-			return importance * (surface.emission + TraceRay(Ray{ intersectionPoint + errorMargin, glm::reflect(I, normal) }, uniformGenerator, --traceDepth, importance));
+			return TraceRay(Ray{ intersectionPoint + errorMargin, glm::reflect(I, normal) }, uniformGenerator, --traceDepth, importance);
 		}
 
 		// Use Schlick's approximation of the Fresnel equation to determine reflection and refraction contributions.
@@ -204,7 +203,7 @@ ColorDbl Scene::TraceRay(Ray ray, UniformRandomGenerator& uniformGenerator, unsi
 		float R0 = (n2 - n1) / (n2 + n1);
 		R0 *= R0;
 		float c = 1.0f - (-cosI);
-		float R = R0 + (1 - R0) * c * c * c * c * c;
+		float R = R0 + (1.0f - R0) * c * c * c * c * c;
 
 		// Use probability to determine if the ray is important enough to need a detailed contribution
 		if (uniformGenerator.RandomDouble() < MaxImportance(importance))
@@ -437,14 +436,14 @@ void CornellBoxScene::AddExampleObjects(float radius)
 	refractionSphere->material.color = ColorDbl(0.5);
 
 	// Left box
-	Box* lambertianBox = CreateObject<Box>();
-	lambertianBox->SetGeometry({ halfWidth - 1.5f, -halfHeight, -depthOffset / 2.0 }, { 0.0f, 1.0f, 0.0f }, { -0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight - radius);
-	lambertianBox->material.color = ColorDbl(0.01, 0.3, 0.8);
+	Box* orenNayarBox = CreateObject<Box>();
+	orenNayarBox->SetGeometry({ halfWidth - 1.5f, -halfHeight, -depthOffset / 2.0 }, { 0.0f, 1.0f, 0.0f }, { -0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight - radius);
+	orenNayarBox->material.color = ColorDbl(0.01, 0.3, 0.8);
 
 	// Right box
-	Box* orenNayarBox = CreateObject<Box>();
-	orenNayarBox->SetGeometry({ -halfWidth + 1.5f, -halfHeight, -depthOffset / 2.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight - radius);
-	orenNayarBox->material.color = ColorDbl(0.8, 0.4, 0.01);
+	Box* lambertianBox = CreateObject<Box>();
+	lambertianBox->SetGeometry({ -halfWidth + 1.5f, -halfHeight, -depthOffset / 2.0 }, { 0.0f, 1.0f, 0.0f }, { 0.5f, 0.0f, 1.0f }, 2.0f, 2.0f, halfHeight - radius);
+	lambertianBox->material.color = ColorDbl(0.8, 0.4, 0.01);
 
 	// Center box
 	Box* middleBox = CreateObject<Box>();
@@ -469,6 +468,8 @@ void CornellBoxScene::AddExampleObjects(float radius)
 
 	orenNayarSphere->material.roughness = 0.5f;
 	orenNayarBox->material.roughness = 0.5f;
+
+	refractionSphere->material.refractiveIndex = 1.4f;
 
 	// Test load mesh
 	//TriangleMesh* mesh = CreateObject<TriangleMesh>();

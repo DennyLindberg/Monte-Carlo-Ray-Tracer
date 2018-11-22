@@ -24,7 +24,6 @@ protected:
 public:
 	Octree octree;
 	ColorDbl backgroundColor = { 0.0f, 0.0f, 0.0f };
-	unsigned int LIGHT_SUBSAMPLE_COUNT = 32;
 
 	Scene() = default;
 	~Scene();
